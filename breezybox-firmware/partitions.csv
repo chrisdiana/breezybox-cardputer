@@ -1,0 +1,5 @@
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     ,        0x6000,
+phy_init, data, phy,     ,        0x1000,
+breezybox,app,  factory, ,        0x3E0000,
+storage,  data, littlefs,,        0x410000,

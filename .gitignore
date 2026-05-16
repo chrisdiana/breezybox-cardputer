@@ -1,0 +1,25 @@
+.DS_Store
+.claude/
+
+ref/
+
+# ESP-IDF / BreezyBox firmware build output
+breezybox-firmware/.cache/
+breezybox-firmware/build/
+breezybox-firmware/build-*/
+breezybox-firmware/sdkconfig
+breezybox-firmware/sdkconfig.old
+breezybox-firmware/managed_components/
+
+# Firmware release artifacts generated locally
+breezybox-firmware/**/*.bin
+breezybox-firmware/**/*.elf
+breezybox-firmware/**/*.map
+
+# Local Python build helpers
+breezybox-firmware/**/__pycache__/
+breezybox-firmware/**/*.pyc
+
+# Built ELF app payloads
+breezybox-cardputer/apps/**/*.elf
+breezybox-cardputer/apps/**/*-stripped

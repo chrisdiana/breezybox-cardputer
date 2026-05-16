@@ -1,0 +1,446 @@
+Lua On-Device Quick Guide
+=========================
+
+Start
+-----
+lua guide
+lua
+lua -e 'print(2+2)'
+lua /root/lua/hello.lua
+
+Read This Guide On Device
+-------------------------
+more /root/lua/GUIDE.txt
+vi /root/lua/GUIDE.txt
+
+Make A New Script
+-----------------
+cp /root/lua/template.lua /root/apps/myapp.lua
+vi /root/apps/myapp.lua
+lua /root/apps/myapp.lua
+
+Script Arguments
+----------------
+lua /root/lua/args.lua one two three
+
+Inside Lua:
+- arg[0] is the first user argument
+- arg[1] is the second user argument
+
+Core Module
+-----------
+Use:
+local breezy = require("breezy")
+
+Shell / Filesystem API
+----------------------
+breezy.cwd()                     current directory
+breezy.cd("/root")               change directory
+breezy.listdir("/root")          list files
+breezy.read_file("/root/x")      read file contents
+breezy.write_file("/root/x", s)  write file
+breezy.write_file("/root/x", s, true) append file
+breezy.exists("/root/x")         true/false
+breezy.exec("ls /root")          run shell command
+breezy.sleep(0.5)                sleep seconds
+breezy.sleep_ms(50)              sleep milliseconds
+breezy.now_ms()                  monotonic milliseconds
+breezy.clear()                   clear terminal
+breezy.term_size()               cols, rows
+breezy.readkey()                 wait for one key/string
+breezy.readkey(0)                non-blocking key poll
+
+Pin / GPIO API
+--------------
+local pin = require("breezy").pin
+
+pin.mode(gpio, "in")             input
+pin.mode(gpio, "out")            output
+pin.mode(gpio, "input_pullup")   input with pull-up
+pin.mode(gpio, "input_pulldown") input with pull-down
+pin.mode(gpio, "od")             open-drain output
+pin.read(gpio)                   read 0/1
+pin.write(gpio, value)           set 0/1
+
+ADC API
+-------
+local adc = require("breezy").adc
+
+adc.read(gpio)                   raw ADC read, default 12db attenuation
+adc.read(gpio, "0db")            attenuation options: 0db 2.5db 6db 12db
+adc.read(gpio, 0)                attenuation index 0..3 also works
+
+Notes:
+- This is raw ADC data for now.
+- Use ADC-capable GPIOs only.
+
+I2C API
+-------
+local i2c = require("breezy").i2c
+
+i2c.open(sda_pin, scl_pin)                   open external I2C bus
+i2c.open(sda_pin, scl_pin, {
+  freq = 400000,
+  pullup = true,
+  port = 0,
+})
+i2c.scan()                                   list responding addresses
+i2c.write(addr, data)                        write raw bytes
+i2c.read(addr, len)                          read raw bytes
+i2c.write_reg(addr, reg, data)               write register
+i2c.read_reg(addr, reg, len)                 read register bytes
+i2c.close()                                  close bus
+
+Notes:
+- Lua uses external I2C port 0 only.
+- The Cardputer keyboard already uses a separate internal I2C bus.
+- Use explicit SDA/SCL pins that match your wiring.
+
+I2S API
+-------
+local i2s = require("breezy").i2s
+
+i2s.open_tx(bclk_pin, ws_pin, dout_pin)
+i2s.open_tx(bclk_pin, ws_pin, dout_pin, {
+  sample_rate = 16000,
+  bits = 16,
+  channels = 1,
+  format = "msb",
+  mclk_pin = -1,
+})
+i2s.write(data[, timeout_ms])               write raw sample bytes
+
+i2s.open_rx(bclk_pin, ws_pin, din_pin)
+i2s.open_rx(bclk_pin, ws_pin, din_pin, {
+  sample_rate = 16000,
+  bits = 16,
+  channels = 1,
+  format = "msb",
+  mclk_pin = -1,
+})
+i2s.read(len[, timeout_ms])                 read raw sample bytes
+
+i2s.state()                                 state table
+i2s.close()                                 close both directions
+i2s.close("tx")                             close TX only
+i2s.close("rx")                             close RX only
+
+Notes:
+- This is standard I2S with explicit pins.
+- It is intended for external codecs, DACs, microphones, or loopback tests.
+- It does not yet abstract the Cardputer's built-in audio path.
+- Data is raw bytes, so match your sample format to the external device.
+
+SPI API
+-------
+local spi = require("breezy").spi
+
+spi.open(sclk_pin, mosi_pin, miso_pin, cs_pin)
+spi.open(sclk_pin, mosi_pin, miso_pin, cs_pin, {
+  mode = 0,
+  delay_us = 1,
+  msb_first = true,
+})
+spi.transfer(data)                            write and read same length
+spi.write(data)                               write only
+spi.read(len[, fill_byte])                    read bytes by clocking fill byte
+spi.select(true)                              assert chip-select
+spi.select(false)                             release chip-select
+spi.close()                                   close bus
+
+Notes:
+- This first Lua SPI layer is software SPI over GPIOs.
+- It avoids conflicting with the LCD and SD buses already used by the firmware.
+- It is good for sensors and small devices, not for high-speed bulk transfers.
+
+Storage / SD API
+----------------
+local storage = require("breezy").storage
+
+storage.mounts()                 list mounted roots
+storage.sd_mounted()             true/false
+storage.info("/root")            table with total/used/free/type
+storage.info("/sd")              same for SD, if mounted
+
+Network API
+-----------
+local net = require("breezy").network
+
+net.is_connected()               true/false
+net.info()                       table with ssid/ip/rssi when connected
+local h = net.tcp_connect("93.184.216.34", "80")
+net.tcp_write(h, "GET / HTTP/1.0\\r\\nHost: example.com\\r\\n\\r\\n")
+print(net.tcp_read(h, 512, 1000))
+net.tcp_close(h)
+local res = net.http_get("http://example.com/")
+print(res.status, #res.body)
+local post = net.http_post(
+  "http://httpbin.org/post",
+  '{"hello":"world"}',
+  { ["Content-Type"] = "application/json" }
+)
+print(post.status, #post.body)
+
+Notes:
+- Use the existing shell `wifi` command to connect, scan, or forget networks.
+- `tcp_connect()` takes a host and string service/port like `"80"`.
+- `/root/lua/web_get_example.lua` fetches a small page sample from `example.com`.
+
+Raw Keyboard API
+----------------
+local keyboard = require("breezy").keyboard
+
+keyboard.read_event()            wait for raw event table
+keyboard.read_event(0)           poll, returns nil if none
+keyboard.peek_event()            inspect next event without removing it
+keyboard.flush()                 drop queued events
+keyboard.is_down("q")            key held right now
+keyboard.is_down("shift")        special keys: shift ctrl alt fn opt enter tab backspace
+keyboard.mods()                  table with modifier booleans
+
+Event fields:
+- pressed
+- code
+- base
+- shifted
+- fn shift ctrl alt opt
+- enter tab backspace
+- row col
+
+Battery API
+-----------
+local battery = require("breezy").battery
+
+battery.read_uv()                scaled battery microvolts
+battery.read_pct()               rough 0..100 percentage
+battery.read_level()             rough 0..3 level
+
+Config / Settings API
+---------------------
+local config = require("breezy").config
+
+config.load()                    load /root/.lua_config.json
+config.save(tbl)                 save default config file
+config.get("theme")              read one key
+config.get("theme", "amber")     read with fallback
+config.set("theme", "amber")     set one key
+
+Optional file path:
+config.load("/root/myapp.json")
+config.save({ volume = 180 }, "/root/myapp.json")
+config.get("volume", 180, "/root/myapp.json")
+config.set("volume", 200, "/root/myapp.json")
+
+Sound API
+---------
+local sound = require("breezy").sound
+
+sound.speaker_open()             built-in speaker
+sound.speaker_open(22050, 200)   sample_rate, volume
+sound.speaker_state()            open/sample_rate/volume/mic_open
+sound.play_raw(pcm_bytes)        signed 16-bit mono PCM
+sound.mix({ a, b, c })           mix PCM byte strings
+sound.tone(880, 120)             built-in speaker tone
+sound.tone(880, 120, 220)        tone with volume
+sound.play_notes("C4:4 E4:4 G4:4 C5:8")
+sound.beep(1200, 40)             alias of tone()
+sound.speaker_stop()
+sound.speaker_close()
+
+Microphone helpers:
+sound.mic_open(bclk, ws, din[, opts])
+sound.mic_read(len[, timeout_ms])
+sound.mic_close()
+
+Notes:
+- Speaker helpers target the built-in Cardputer speaker path.
+- `play_raw()` and `mix()` use signed 16-bit mono PCM byte strings.
+- `mic_open()` is still explicit-pin I2S input for external microphones/codecs.
+
+Text UI API
+-----------
+local tui = require("breezy").tui
+
+tui.move(col, row)               move cursor (1-based)
+tui.clear_line()                 clear current line
+tui.clear_line(row)              clear one line by row
+tui.write_at(col, row, text)     write at position
+tui.write_at(col, row, text, true) write and clear to end of line
+tui.center(text, row)            centered text
+tui.status(text)                 inverse footer/status line
+tui.cursor(false)                hide cursor
+tui.cursor(true)                 show cursor
+tui.box(x, y, w, h, title)       draw a simple ASCII box
+
+Example
+-------
+local breezy = require("breezy")
+print("cwd:", breezy.cwd())
+local cols, rows = breezy.term_size()
+print("size:", cols, rows)
+for i, name in ipairs(breezy.listdir("/root")) do
+  print(i, name)
+end
+
+Input Example
+-------------
+local breezy = require("breezy")
+print("press q to quit")
+while true do
+  local key = breezy.readkey()
+  print("key:", key)
+  if key == "q" then
+    break
+  end
+end
+
+Tiny App Loop Example
+---------------------
+local breezy = require("breezy")
+local start = breezy.now_ms()
+while true do
+  local key = breezy.readkey(0)
+  if key == "q" then
+    break
+  end
+  if breezy.now_ms() - start > 1000 then
+    print("tick")
+    start = breezy.now_ms()
+  end
+  breezy.sleep_ms(16)
+end
+
+TUI Example
+-----------
+local breezy = require("breezy")
+local tui = breezy.tui
+breezy.clear()
+tui.cursor(false)
+tui.box(1, 1, 40, 16, " demo ")
+tui.center("press q to quit", 3)
+tui.status("ready")
+while true do
+  local key = breezy.readkey()
+  if key == "q" then
+    break
+  end
+  tui.write_at(3, 6, "last key: " .. tostring(key), true)
+end
+tui.cursor(true)
+
+Graphics API
+------------
+local gfx = require("breezy").gfx
+
+gfx.mode("text")                 normal text mode
+gfx.mode("150p")                 lightweight graphics mode
+gfx.mode("vga")                  heavier graphics mode
+gfx.get_mode()                   current mode
+gfx.font()                       current font name
+gfx.font("small")                5x7 font
+gfx.font("term16")               8x16 Terminus font
+gfx.size()                       width, height
+gfx.clear(color)                 fill screen
+gfx.pixel(x, y, color)           draw pixel
+gfx.rect(x, y, w, h, color)      outline rect
+gfx.rectfill(x, y, w, h, color)  filled rect
+gfx.hline(x, y, w, color)        horizontal line
+gfx.vline(x, y, h, color)        vertical line
+gfx.text(x, y, text, fg [, bg])  draw text in current font
+gfx.text_size(text)              width, height in current font
+local img = gfx.new_image(16, 16[, fill])
+img:pixel(x, y, color)
+img:rect(x, y, w, h, color)
+img:rectfill(x, y, w, h, color)
+img:clear(color)
+img:size()
+img:data()
+gfx.blit(img, x, y[, transparent])
+gfx.blit_flip(img, x, y[, transparent[, flip_x[, flip_y]]])
+gfx.backlight()                  get backlight 0..255
+gfx.backlight(180)               set backlight
+gfx.palette(i, r, g, b)          set palette entry 0-255
+gfx.wait_vsync()                 frame sync hint
+
+Graphics Example
+----------------
+local breezy = require("breezy")
+local gfx = breezy.gfx
+gfx.mode("150p")
+gfx.clear(0)
+gfx.rectfill(20, 20, 40, 20, 12)
+breezy.sleep(1)
+gfx.mode("text")
+
+UART / Serial API
+-----------------
+local uart = require("breezy").uart
+
+uart.open(port, baud, tx_pin, rx_pin)      returns handle
+uart.open(port, baud, tx_pin, rx_pin, {
+  data_bits = 8,
+  stop_bits = 1,
+  parity = "none",
+  rx_buffer = 1024,
+  tx_buffer = 1024,
+})
+uart.write(handle, data)                   write bytes
+uart.read(handle, maxlen, timeout_ms)      read bytes or nil
+uart.readline(handle, timeout_ms, maxlen)  read one line or nil
+uart.flush(handle)                         flush UART buffers
+uart.close(handle)                         close UART
+
+Notes:
+- Use only external UART ports 1 or 2.
+- You must provide explicit TX/RX pins.
+- Do not use the USB shell console path for this.
+- Pick free GPIOs that do not conflict with your hardware wiring.
+
+UART Example
+------------
+local breezy = require("breezy")
+local uart = breezy.uart
+local h = uart.open(1, 115200, 1, 2)
+uart.write(h, "hello\\r\\n")
+local line = uart.readline(h, 200)
+print("got:", line)
+uart.close(h)
+
+Useful Demos
+------------
+lua /root/lua/hello.lua
+lua /root/lua/list_root.lua
+lua /root/lua/sysinfo.lua
+lua /root/lua/write_demo.lua
+lua /root/lua/graphics_demo.lua
+lua /root/lua/graphics_text_demo.lua
+lua /root/lua/tui_demo.lua
+lua /root/lua/keyboard_demo.lua
+lua /root/lua/battery_demo.lua
+lua /root/lua/config_demo.lua
+lua /root/lua/http_demo.lua
+lua /root/lua/web_get_example.lua
+lua /root/lua/web_post_example.lua
+lua /root/lua/sound_demo.lua
+lua /root/lua/sprite_demo.lua
+lua /root/lua/i2c_scan.lua
+lua /root/lua/i2s_demo.lua
+lua /root/lua/spi_demo.lua
+lua /root/lua/uart_demo.lua
+lua /root/lua/hardware_info.lua
+
+Programming Loop
+----------------
+1. vi /root/apps/myapp.lua
+2. write code
+3. :wq
+4. lua /root/apps/myapp.lua
+5. repeat
+
+Tips
+----
+- Use "print(...)" for debugging.
+- Start with text-mode scripts first.
+- Switch back to gfx.mode("text") before finishing a graphics app.
+- Use breezy.exec(...) if a shell command is easier than writing Lua.
+- Hide the cursor during full-screen TUI apps and show it again before exit.

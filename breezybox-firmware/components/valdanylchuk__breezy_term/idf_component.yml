@@ -1,0 +1,25 @@
+dependencies:
+  idf:
+    version: '>=5.0'
+description: breezy_term - The vterm used in BreezyBox, a mini shell for esp32-s3
+documentation: https://github.com/valdanylchuk/breezy_term#readme
+issues: https://github.com/valdanylchuk/breezy_term/issues
+license: MIT
+maintainers:
+- Valentyn Danylchuk <val@danylchuk.com>
+repository: https://github.com/valdanylchuk/breezy_term.git
+targets:
+- esp32
+- esp32c2
+- esp32c3
+- esp32c5
+- esp32c6
+- esp32c61
+- esp32h2
+- esp32h21
+- esp32h4
+- esp32p4
+- esp32s2
+- esp32s3
+url: https://github.com/valdanylchuk/breezy_term
+version: 1.0.1
