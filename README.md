@@ -64,11 +64,20 @@ Useful targets:
 
 ```sh
 make build
+make launcher-package
 make flash
 make monitor
 make erase
 make rebuild
 ```
+
+Launcher install image:
+
+```sh
+make launcher-package
+```
+
+This writes a Launcher-compatible `.bin` into the firmware build directory. The package uses Launcher's `vfs` FAT partition for `/root`, so Lua examples and other nested directories are preserved.
 
 ## Serial Monitor
 

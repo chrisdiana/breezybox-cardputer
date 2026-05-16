@@ -8,11 +8,33 @@
 #define BREEZYBOX_MOUNT_POINT "/root"
 #define BREEZYBOX_SD_MOUNT_POINT "/sd"
 
+typedef enum {
+    BREEZYBOX_ROOT_FS_NONE = 0,
+    BREEZYBOX_ROOT_FS_LITTLEFS,
+    BREEZYBOX_ROOT_FS_FAT,
+    BREEZYBOX_ROOT_FS_SPIFFS,
+} breezybox_root_fs_kind_t;
+
 /**
- * @brief Initialize BreezyBox filesystem (LittleFS on internal flash)
+ * @brief Initialize BreezyBox filesystem on internal flash.
  * @return ESP_OK on success
  */
 esp_err_t breezybox_vfs_init(void);
+
+/**
+ * @brief Return the mounted internal root filesystem kind.
+ */
+breezybox_root_fs_kind_t breezybox_root_fs_kind(void);
+
+/**
+ * @brief Return the mounted internal root filesystem name.
+ */
+const char *breezybox_root_fs_name(void);
+
+/**
+ * @brief Query usage for the mounted internal root filesystem.
+ */
+esp_err_t breezybox_root_fs_info(size_t *total_bytes, size_t *used_bytes);
 
 /**
  * @brief Check whether the SD card filesystem is mounted.

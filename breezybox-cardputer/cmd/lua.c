@@ -1561,11 +1561,11 @@ static int l_storage_info(lua_State *L)
     if (strcmp(mount, BREEZYBOX_MOUNT_POINT) == 0) {
         size_t total_bytes = 0;
         size_t used_bytes = 0;
-        esp_err_t err = esp_littlefs_info("storage", &total_bytes, &used_bytes);
+        esp_err_t err = breezybox_root_fs_info(&total_bytes, &used_bytes);
         if (err != ESP_OK) {
             return luaL_error(L, "storage info failed: %d", (int)err);
         }
-        lua_pushstring(L, "littlefs");
+        lua_pushstring(L, breezybox_root_fs_name());
         lua_setfield(L, -2, "type");
         lua_pushinteger(L, (lua_Integer)total_bytes);
         lua_setfield(L, -2, "total");

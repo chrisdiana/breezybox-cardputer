@@ -1,0 +1,8 @@
+# BreezyBox Launcher package layout for 8 MB boards.
+# This table is embedded in the distributable .bin so Launcher can extract
+# the app payload plus a FAT image for /root.
+# Name,      Type, SubType, Offset,   Size, Flags
+nvs,         data, nvs,     0x9000,   0x6000,
+breezybox,   app,  factory, 0x10000,  0x3E0000,
+vfs,         data, fat,     0x670000, 0x080000,
+coredump,    data, coredump,0x7F0000, 0x10000,

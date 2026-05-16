@@ -24,9 +24,7 @@ int cmd_df(int argc, char **argv)
     
     size_t total_bytes = 0, used_bytes = 0;
     
-    // Get LittleFS partition info
-    // The partition label is "storage" as configured in breezy_vfs.c
-    esp_err_t ret = esp_littlefs_info("storage", &total_bytes, &used_bytes);
+    esp_err_t ret = breezybox_root_fs_info(&total_bytes, &used_bytes);
     if (ret != ESP_OK) {
         printf("df: cannot get filesystem info\n");
         return 1;
@@ -34,6 +32,7 @@ int cmd_df(int argc, char **argv)
     
     printf("Filesystem      Size    Used   Avail  Use%%\n");
     print_fs_row(BREEZYBOX_MOUNT_POINT, total_bytes / 1024, used_bytes / 1024);
+    printf("rootfs type: %s\n", breezybox_root_fs_name());
 
     if (breezybox_sd_mounted()) {
         uint64_t sd_total_bytes = 0;

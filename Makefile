@@ -6,7 +6,7 @@ CARDPUTER_DIR := /Users/chris/code/hardware/breezy-cardputer-2/cardputer-demo
 PIO_CORE_DIR := $(CARDPUTER_DIR)/.pio-core
 PIO := $(CARDPUTER_DIR)/.venv/bin/platformio
 ESPTOOL := python3 /Users/chris/.platformio/packages/tool-esptoolpy/esptool.py
-FIRMWARE_DIR := /Users/chris/code/hardware/breezy-cardputer-2/breezybox-firmware
+FIRMWARE_DIR := $(CURDIR)/breezybox-firmware
 IDF_PY ?= idf.py
 BUILD_DIR := $(FIRMWARE_DIR)/build-$(BOARD)
 SDKCONFIG_DEFAULTS_FILE := $(FIRMWARE_DIR)/sdkconfig.defaults.$(BOARD)
@@ -23,13 +23,14 @@ CARDPUTER_BIN := $(CARDPUTER_DIR)/.pio/build/cardputer/cardputer_breezy.bin
 FIRMWARE_BUILD_DIR := $(BUILD_DIR)
 IDF_ARGS := -B $(BUILD_DIR) -DIDF_TARGET=$(IDF_TARGET) -DBREEZY_BOARD=$(BOARD) -DSDKCONFIG=$(SDKCONFIG_FILE) -DSDKCONFIG_DEFAULTS=$(SDKCONFIG_DEFAULTS_FILE)
 
-.PHONY: help check-cardputer check-firmware build cardputer-build firmware-build breezydemo-build cardputer-shell-build rebuild flash monitor erase clean cardputer-shell-flash cardputer-shell-monitor cardputer-shell-erase
+.PHONY: help check-cardputer check-firmware build cardputer-build firmware-build launcher-package breezydemo-build cardputer-shell-build rebuild flash monitor erase clean cardputer-shell-flash cardputer-shell-monitor cardputer-shell-erase
 
 help:
 	@echo "Targets:"
 	@echo "  make build              Build the BreezyBox Cardputer port"
 	@echo "  make flash              Reconfigure, build, and flash breezybox-firmware to $(PORT)"
 	@echo "  make monitor            Open the breezybox-firmware serial monitor on $(PORT)"
+	@echo "  make launcher-package   Build a Launcher-compatible install image"
 	@echo "  make erase              Erase flash on $(PORT)"
 	@echo "  make cardputer-build    Alias for firmware-build"
 	@echo "  make firmware-build     Build the BreezyBox Cardputer port only"
@@ -67,6 +68,9 @@ cardputer-shell-build: check-cardputer
 
 firmware-build: check-firmware
 	cd $(FIRMWARE_DIR) && $(IDF_PY) $(IDF_ARGS) reconfigure build
+
+launcher-package: firmware-build
+	python3 tools/build_launcher_bin.py --build-dir $(BUILD_DIR) --firmware-dir $(FIRMWARE_DIR) --out $(BUILD_DIR)/breezybox-$(BOARD)-launcher.bin
 
 breezydemo-build: firmware-build
 

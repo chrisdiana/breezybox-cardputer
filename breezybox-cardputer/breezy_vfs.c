@@ -1,5 +1,6 @@
 #include "breezy_vfs.h"
 #include "esp_littlefs.h"
+#include "esp_spiffs.h"
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
 #include "driver/sdspi_host.h"
@@ -13,6 +14,7 @@ static const char *TAG = "breezy_vfs";
 static char s_cwd[BREEZYBOX_MAX_PATH + 1] = BREEZYBOX_MOUNT_POINT;
 static bool s_sd_mounted;
 static sdmmc_card_t *s_sd_card;
+static breezybox_root_fs_kind_t s_root_fs_kind = BREEZYBOX_ROOT_FS_NONE;
 
 #if defined(BREEZY_BOARD_STICKS3)
 static void try_mount_sd_card(void)
@@ -80,6 +82,52 @@ static void try_mount_sd_card(void)
 bool breezybox_sd_mounted(void)
 {
     return s_sd_mounted;
+}
+
+breezybox_root_fs_kind_t breezybox_root_fs_kind(void)
+{
+    return s_root_fs_kind;
+}
+
+const char *breezybox_root_fs_name(void)
+{
+    switch (s_root_fs_kind) {
+        case BREEZYBOX_ROOT_FS_LITTLEFS:
+            return "littlefs";
+        case BREEZYBOX_ROOT_FS_FAT:
+            return "fat";
+        case BREEZYBOX_ROOT_FS_SPIFFS:
+            return "spiffs";
+        default:
+            return "none";
+    }
+}
+
+esp_err_t breezybox_root_fs_info(size_t *total_bytes, size_t *used_bytes)
+{
+    if (!total_bytes || !used_bytes) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    switch (s_root_fs_kind) {
+        case BREEZYBOX_ROOT_FS_LITTLEFS:
+            return esp_littlefs_info("storage", total_bytes, used_bytes);
+        case BREEZYBOX_ROOT_FS_FAT: {
+            uint64_t fat_total = 0;
+            uint64_t fat_free = 0;
+            esp_err_t err = esp_vfs_fat_info(BREEZYBOX_MOUNT_POINT, &fat_total, &fat_free);
+            if (err != ESP_OK) {
+                return err;
+            }
+            *total_bytes = (size_t)fat_total;
+            *used_bytes = (size_t)(fat_total - fat_free);
+            return ESP_OK;
+        }
+        case BREEZYBOX_ROOT_FS_SPIFFS:
+            return esp_spiffs_info("spiffs", total_bytes, used_bytes);
+        default:
+            return ESP_ERR_INVALID_STATE;
+    }
 }
 
 void breezybox_get_cwd(char *buf, size_t size)
@@ -153,11 +201,8 @@ char *breezybox_resolve_path(const char *path, char *buf, size_t size)
     return buf;
 }
 
-esp_err_t breezybox_vfs_init(void)
+static esp_err_t try_mount_littlefs_root(void)
 {
-    s_sd_mounted = false;
-    s_sd_card = NULL;
-
     esp_vfs_littlefs_conf_t conf = {
         .base_path = BREEZYBOX_MOUNT_POINT,
         .partition_label = "storage",
@@ -166,13 +211,79 @@ esp_err_t breezybox_vfs_init(void)
     };
 
     esp_err_t ret = esp_vfs_littlefs_register(&conf);
+    if (ret == ESP_OK) {
+        s_root_fs_kind = BREEZYBOX_ROOT_FS_LITTLEFS;
+    }
+    return ret;
+}
+
+static esp_err_t try_mount_spiffs_root(void)
+{
+    esp_vfs_spiffs_conf_t conf = {
+        .base_path = BREEZYBOX_MOUNT_POINT,
+        .partition_label = "spiffs",
+        .max_files = 8,
+        .format_if_mount_failed = true,
+    };
+
+    esp_err_t ret = esp_vfs_spiffs_register(&conf);
+    if (ret == ESP_OK) {
+        s_root_fs_kind = BREEZYBOX_ROOT_FS_SPIFFS;
+    }
+    return ret;
+}
+
+static esp_err_t try_mount_fat_root(void)
+{
+    esp_vfs_fat_mount_config_t conf = {
+        .format_if_mount_failed = true,
+        .max_files = 8,
+        .allocation_unit_size = 4096,
+        .disk_status_check_enable = false,
+        .use_one_fat = false,
+    };
+
+    wl_handle_t wl_handle = WL_INVALID_HANDLE;
+    esp_err_t ret = esp_vfs_fat_spiflash_mount_rw_wl(
+        BREEZYBOX_MOUNT_POINT,
+        "vfs",
+        &conf,
+        &wl_handle
+    );
+    if (ret == ESP_OK) {
+        s_root_fs_kind = BREEZYBOX_ROOT_FS_FAT;
+    }
+    return ret;
+}
+
+esp_err_t breezybox_vfs_init(void)
+{
+    s_sd_mounted = false;
+    s_sd_card = NULL;
+    s_root_fs_kind = BREEZYBOX_ROOT_FS_NONE;
+
+    esp_err_t ret = try_mount_littlefs_root();
     if (ret != ESP_OK) {
-        if (ret == ESP_FAIL) {
-            printf("Failed to mount or format LittleFS\n");
-        } else if (ret == ESP_ERR_NOT_FOUND) {
-            printf("No 'storage' partition found\n");
+        ESP_LOGW(TAG, "LittleFS root mount failed: %s", esp_err_to_name(ret));
+
+        ret = try_mount_fat_root();
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "FAT root mount failed: %s", esp_err_to_name(ret));
+
+            ret = try_mount_spiffs_root();
+            if (ret != ESP_OK) {
+                if (ret == ESP_FAIL) {
+                    printf("Failed to mount or format internal filesystem\n");
+                } else if (ret == ESP_ERR_NOT_FOUND) {
+                    printf("No compatible internal filesystem partition found\n");
+                }
+                return ret;
+            }
+
+            ESP_LOGI(TAG, "Mounted %s from SPIFFS partition", BREEZYBOX_MOUNT_POINT);
+        } else {
+            ESP_LOGI(TAG, "Mounted %s from FAT partition", BREEZYBOX_MOUNT_POINT);
         }
-        return ret;
     }
 
     try_mount_sd_card();

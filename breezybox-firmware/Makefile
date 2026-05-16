@@ -1,11 +1,12 @@
 PORT ?= /dev/cu.usbmodem1101
 IDF_PY ?= idf.py
 
-.PHONY: help check-idf build flash monitor flash-monitor clean fullclean erase
+.PHONY: help check-idf build launcher-package flash monitor flash-monitor clean fullclean erase
 
 help:
 	@echo "Targets:"
 	@echo "  make build           Reconfigure and build firmware plus LittleFS image"
+	@echo "  make launcher-package Build a Launcher-compatible install image"
 	@echo "  make flash           Flash firmware to $(PORT)"
 	@echo "  make monitor         Open serial monitor on $(PORT)"
 	@echo "  make flash-monitor   Flash and open monitor"
@@ -25,6 +26,9 @@ check-idf:
 
 build: check-idf
 	$(IDF_PY) reconfigure build
+
+launcher-package: build
+	python3 ../tools/build_launcher_bin.py --build-dir build --firmware-dir . --out build/breezybox-cardputer-launcher.bin
 
 flash: check-idf
 	$(IDF_PY) -p $(PORT) reconfigure flash

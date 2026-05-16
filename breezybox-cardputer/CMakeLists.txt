@@ -1,5 +1,5 @@
 set(BREEZYBOX_CARDPUTER_REQUIRES
-    console littlefs fatfs nvs_flash esp_wifi esp_netif esp_http_server
+    console littlefs spiffs fatfs nvs_flash esp_wifi esp_netif esp_http_server
     esp_http_client json vfs mbedtls zlib breezy_term
     valdanylchuk__breezy_rgb_lcd driver esp_driver_sdspi esp_driver_spi
     esp_driver_uart esp_driver_i2s esp_driver_ledc esp_adc sdmmc lwip
