@@ -1,6 +1,6 @@
 # BreezyBox for Cardputer
 
-> Cardputer ADV and StickS3 port of BreezyBox, a BusyBox-inspired shell and virtual terminal system for ESP32 with Wi-Fi, Bluetooth keyboard support, bundled built-in apps, and an embedded Lua runtime.
+> Cardputer ADV and StickS3 port of BreezyBox, a BusyBox-inspired shell and virtual terminal system for ESP32 with added features like Wi-Fi, Bluetooth keyboard support, bundled built-in apps, and an embedded Lua runtime.
 
 <img src="docs/screenshot.png" alt="Screenshot of Breezybox on Cardputer" width="350" />
 
