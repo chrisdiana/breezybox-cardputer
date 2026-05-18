@@ -7,8 +7,8 @@
   "description": "Optional Lua platformer bundle for BreezyBox Cardputer.",
   "files": [
     {
-      "source": "root/apps/ccleste/main.lua",
-      "target": "/root/apps/ccleste/main.lua"
+      "source": "root/apps/ccleste.lua",
+      "target": "/root/apps/ccleste.lua"
     },
     {
       "source": "root/bin/ccleste",

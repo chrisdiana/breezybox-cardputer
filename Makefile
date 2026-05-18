@@ -23,14 +23,17 @@ CARDPUTER_BIN := $(CARDPUTER_DIR)/.pio/build/cardputer/cardputer_breezy.bin
 FIRMWARE_BUILD_DIR := $(BUILD_DIR)
 IDF_ARGS := -B $(BUILD_DIR) -DIDF_TARGET=$(IDF_TARGET) -DBREEZY_BOARD=$(BOARD) -DSDKCONFIG=$(SDKCONFIG_FILE) -DSDKCONFIG_DEFAULTS=$(SDKCONFIG_DEFAULTS_FILE)
 
-.PHONY: help check-cardputer check-firmware build cardputer-build firmware-build launcher-package breezydemo-build cardputer-shell-build rebuild flash monitor erase clean cardputer-shell-flash cardputer-shell-monitor cardputer-shell-erase
+.PHONY: help check-cardputer check-firmware build cardputer-build firmware-build final-package launcher-package app-flash fs-flash breezydemo-build cardputer-shell-build rebuild flash monitor erase clean cardputer-shell-flash cardputer-shell-monitor cardputer-shell-erase
 
 help:
 	@echo "Targets:"
 	@echo "  make build              Build the BreezyBox Cardputer port"
 	@echo "  make flash              Reconfigure, build, and flash breezybox-firmware to $(PORT)"
+	@echo "  make app-flash          Flash only the app partition and preserve /root"
+	@echo "  make fs-flash           Flash only the /root LittleFS partition"
 	@echo "  make monitor            Open the breezybox-firmware serial monitor on $(PORT)"
-	@echo "  make launcher-package   Build a Launcher-compatible install image"
+	@echo "  make final-package      Build the shared install image (.bin) for Launcher or direct flashing"
+	@echo "  make launcher-package   Alias for final-package"
 	@echo "  make erase              Erase flash on $(PORT)"
 	@echo "  make cardputer-build    Alias for firmware-build"
 	@echo "  make firmware-build     Build the BreezyBox Cardputer port only"
@@ -69,8 +72,10 @@ cardputer-shell-build: check-cardputer
 firmware-build: check-firmware
 	cd $(FIRMWARE_DIR) && $(IDF_PY) $(IDF_ARGS) reconfigure build
 
-launcher-package: firmware-build
-	python3 tools/build_launcher_bin.py --build-dir $(BUILD_DIR) --firmware-dir $(FIRMWARE_DIR) --out $(BUILD_DIR)/breezybox-$(BOARD)-launcher.bin
+final-package: firmware-build
+	python3 tools/build_launcher_bin.py --build-dir $(BUILD_DIR) --firmware-dir $(FIRMWARE_DIR) --out $(BUILD_DIR)/breezybox-$(BOARD).bin
+
+launcher-package: final-package
 
 breezydemo-build: firmware-build
 
@@ -80,6 +85,12 @@ rebuild: check-firmware
 
 flash: check-firmware
 	cd $(FIRMWARE_DIR) && $(IDF_PY) $(IDF_ARGS) -p $(PORT) reconfigure flash
+
+app-flash: check-firmware firmware-build
+	cd $(FIRMWARE_DIR) && $(IDF_PY) $(IDF_ARGS) -p $(PORT) app-flash
+
+fs-flash: check-firmware firmware-build
+	python3 -m esptool --chip $(IDF_TARGET) --port $(PORT) --baud $(BAUD) --before default_reset --after hard_reset write_flash 0x4f0000 $(BUILD_DIR)/spiffs.bin
 
 monitor: check-firmware
 	cd $(FIRMWARE_DIR) && $(IDF_PY) $(IDF_ARGS) -p $(PORT) monitor

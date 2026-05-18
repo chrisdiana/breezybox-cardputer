@@ -35,16 +35,26 @@ project(breezybox_cardputer)
 set(BREEZY_FS_IMAGE_DIR ${CMAKE_CURRENT_LIST_DIR}/fs_image)
 set(BREEZY_FS_APPS_DIR ${BREEZY_FS_IMAGE_DIR}/apps)
 set(BREEZY_FS_BREEZYAPPS_DIR ${BREEZY_FS_IMAGE_DIR}/breezyapps)
+set(BREEZY_FS_BIN_DIR ${BREEZY_FS_IMAGE_DIR}/bin)
+set(BREEZY_PACKAGE_CCLESTE_DIR ${CMAKE_CURRENT_LIST_DIR}/../packages/ccleste/root)
 
 file(MAKE_DIRECTORY ${BREEZY_FS_IMAGE_DIR})
 
 add_custom_target(stage_fs_image ALL
     COMMAND ${CMAKE_COMMAND} -E rm -rf ${BREEZY_FS_APPS_DIR}
     COMMAND ${CMAKE_COMMAND} -E rm -rf ${BREEZY_FS_BREEZYAPPS_DIR}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${BREEZY_FS_APPS_DIR}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${BREEZY_FS_BIN_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${BREEZY_PACKAGE_CCLESTE_DIR}/apps/ccleste.lua
+        ${BREEZY_FS_APPS_DIR}/ccleste.lua
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${BREEZY_PACKAGE_CCLESTE_DIR}/bin/ccleste
+        ${BREEZY_FS_BIN_DIR}/ccleste
     COMMENT "Cleaning fs_image app bundles"
 )
 
-littlefs_create_partition_image(storage ${BREEZY_FS_IMAGE_DIR} FLASH_IN_PROJECT
+littlefs_create_partition_image(spiffs ${BREEZY_FS_IMAGE_DIR} FLASH_IN_PROJECT
     DEPENDS stage_fs_image
 )
 

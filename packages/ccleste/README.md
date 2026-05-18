@@ -7,7 +7,7 @@ filesystem later.
 Install layout:
 
 ```text
-/root/apps/ccleste/main.lua
+/root/apps/ccleste.lua
 /root/bin/ccleste
 ```
 
@@ -20,7 +20,7 @@ ccleste
 or directly:
 
 ```sh
-lua /root/apps/ccleste/main.lua
+lua /root/apps/ccleste.lua
 ```
 
 Controls:

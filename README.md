@@ -64,20 +64,32 @@ Useful targets:
 
 ```sh
 make build
+make final-package
 make launcher-package
 make flash
+make app-flash
+make fs-flash
 make monitor
 make erase
 make rebuild
 ```
 
-Launcher install image:
+Shared install image:
 
 ```sh
-make launcher-package
+make final-package
 ```
 
-This writes a Launcher-compatible `.bin` into the firmware build directory. The package uses Launcher's `vfs` FAT partition for `/root`, so Lua examples and other nested directories are preserved.
+This writes a single `.bin` into the firmware build directory that can be used either through Launcher or flashed directly at offset `0x0`. `make launcher-package` remains as an alias for the same unified image.
+
+Partial update targets:
+
+```sh
+make app-flash PORT=/dev/cu.usbmodem1101
+make fs-flash PORT=/dev/cu.usbmodem1101
+```
+
+`app-flash` updates only the firmware at `0x10000` and preserves the `/root` LittleFS partition. `fs-flash` updates only `/root` by writing `spiffs.bin` at `0x4f0000`.
 
 ## Serial Monitor
 

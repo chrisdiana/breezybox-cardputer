@@ -182,6 +182,25 @@ int cmd_ln(int argc, char **argv)
     return 0;
 }
 
+int cmd_ccleste(int argc, char **argv)
+{
+    char **lua_argv = calloc((size_t)argc + 2, sizeof(char *));
+    if (!lua_argv) {
+        printf("ccleste: out of memory\n");
+        return 1;
+    }
+
+    lua_argv[0] = "lua";
+    lua_argv[1] = "/root/apps/ccleste.lua";
+    for (int i = 1; i < argc; ++i) {
+        lua_argv[i + 1] = argv[i];
+    }
+
+    int ret = cmd_lua(argc + 1, lua_argv);
+    free(lua_argv);
+    return ret;
+}
+
 static int find_walk(const char *path, const char *pattern, int type_filter)
 {
     struct stat st;

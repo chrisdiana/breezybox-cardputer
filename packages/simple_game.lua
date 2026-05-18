@@ -4,7 +4,7 @@ local keyboard = breezy.keyboard
 
 local TILE = 8
 local SCREEN_W = 240
-local SCREEN_H = 150
+local SCREEN_H = 135
 local WORLD_W = 30
 local WORLD_H = 38
 local GRAVITY = 0.18
@@ -88,6 +88,7 @@ local prev_restart = false
 local prev_quit = false
 local balloons = {}
 local particles = {}
+local old_backlight = nil
 
 local function set_palette()
   for i, rgb in ipairs(palette) do
@@ -476,9 +477,11 @@ end
 
 math.randomseed(breezy.now_ms())
 gfx.mode("150p")
+SCREEN_W, SCREEN_H = gfx.size()
 set_palette()
 gfx.font("small")
-gfx.backlight(220)
+old_backlight = gfx.backlight()
+gfx.backlight(255)
 restart()
 
 while not quit do
@@ -491,4 +494,7 @@ while not quit do
 end
 
 gfx.mode("text")
+if old_backlight then
+  gfx.backlight(old_backlight)
+end
 print("ccleste closed")
