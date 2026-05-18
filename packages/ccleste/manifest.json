@@ -1,0 +1,18 @@
+{
+  "id": "ccleste",
+  "name": "Ccleste Lua",
+  "version": "0.1.0",
+  "type": "lua-app",
+  "entry": "/root/bin/ccleste",
+  "description": "Optional Lua platformer bundle for BreezyBox Cardputer.",
+  "files": [
+    {
+      "source": "root/apps/ccleste/main.lua",
+      "target": "/root/apps/ccleste/main.lua"
+    },
+    {
+      "source": "root/bin/ccleste",
+      "target": "/root/bin/ccleste"
+    }
+  ]
+}
