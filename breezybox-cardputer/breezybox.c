@@ -80,6 +80,28 @@ static const breezybox_help_entry_t s_core_help[] = {
     { "httpd", "httpd [dir] [-p port]", "Start the HTTP file server.", "-p port  listen port", "httpd /sd -p 8080" },
 };
 
+static void add_command_matches(const esp_console_cmd_t *cmds, size_t count, const char *buf,
+                                linenoiseCompletions *lc)
+{
+    size_t prefix_len;
+
+    if (!cmds || !buf) {
+        return;
+    }
+
+    prefix_len = strlen(buf);
+    for (size_t i = 0; i < count; ++i) {
+        const char *name = cmds[i].command;
+        if (!name) {
+            continue;
+        }
+        if (prefix_len > strlen(name) || strncmp(name, buf, prefix_len) != 0) {
+            continue;
+        }
+        linenoiseAddCompletion(lc, name);
+    }
+}
+
 const esp_console_cmd_t *breezybox_find_command(const char *cmd)
 {
     size_t core_count = 0;
@@ -324,7 +346,7 @@ static void complete_path_argument(const char *buf, linenoiseCompletions *lc)
     } else {
         dir_part[0] = '\0';
         strlcpy(prefix, token, sizeof(prefix));
-        if (!breezybox_resolve_path(".", resolved_dir, sizeof(resolved_dir))) {
+        if (strlcpy(resolved_dir, breezybox_cwd(), sizeof(resolved_dir)) >= sizeof(resolved_dir)) {
             return;
         }
     }
@@ -381,10 +403,15 @@ static void complete_path_argument(const char *buf, linenoiseCompletions *lc)
 
 static void breezybox_get_completion(const char *buf, linenoiseCompletions *lc)
 {
-    esp_console_get_completion(buf, lc);
-    if (lc->len > 0 || strchr(buf, ' ') == NULL) {
+    if (strchr(buf, ' ') == NULL) {
+        size_t core_count = 0;
+        const esp_console_cmd_t *core_cmds = breezybox_get_core_commands(&core_count);
+
+        add_command_matches(core_cmds, core_count, buf, lc);
+        add_command_matches(s_extra_cmds, s_extra_cmd_count, buf, lc);
         return;
     }
+
     complete_hint_argument(buf, lc);
     if (lc->len == 0) {
         complete_path_argument(buf, lc);
