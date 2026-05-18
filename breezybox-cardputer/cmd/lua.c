@@ -4406,7 +4406,7 @@ int cmd_lua(int argc, char **argv)
         }
     }
 
-    bool reduced_lua = run_file_mode || (argc >= 3 && strcmp(argv[1], "-e") == 0);
+    bool reduced_lua = false;
     lua_State *L = create_lua_state(reduced_lua);
     if (!L) {
         free(preloaded_source);
