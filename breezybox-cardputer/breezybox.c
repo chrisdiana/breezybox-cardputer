@@ -626,7 +626,7 @@ static const esp_console_cmd_t s_breezybox_cmds[] = {
     { .command = "wifi",  .help = "WiFi commands",           .hint = "<scan|connect|disconnect|status|forget>", .func = &cmd_wifi },
     { .command = "ping",  .help = "Ping a host",             .hint = "[-c count] [-W timeout_ms] <host>", .func = &cmd_ping },
     { .command = "lua",   .help = "Run embedded Lua",        .hint = "[guide|shell|-e <chunk>|<script.lua> [args...]]", .func = &cmd_lua },
-    { .command = "ccleste", .help = "Run the bundled Ccleste Lua app", .hint = NULL, .func = &cmd_ccleste },
+    { .command = "ccleste", .help = "Run the built-in Celeste Classic / Scrolleste port", .hint = NULL, .func = &cmd_ccleste },
     { .command = "ssh",   .help = "SSH client",              .hint = "[-p port] [-l user] [-pw password] <host|alias> [command...]", .func = &cmd_ssh },
     { .command = "sshcfg", .help = "Manage saved SSH hosts", .hint = "<add|list|show|rm> ...", .func = &cmd_sshcfg },
     { .command = "scp",   .help = "SSH copy client",         .hint = "[-P port] [-l user] [-pw password] <src> <dst>", .func = &cmd_scp },

@@ -2,6 +2,7 @@ set(BOARD_SRCS
     "main.c"
     "my_console_io.c"
     "cmd_app_compat.c"
+    "cmd_ccleste_builtin.c"
     "cmd_testgfx.c"
     "cmd_plasma_builtin.c"
     "cmd_termbench_builtin.c"
@@ -9,6 +10,11 @@ set(BOARD_SRCS
     "cmd_wget_builtin.c"
     "cmd_gzip_builtin.c"
     "cmd_gunzip_builtin.c"
+    "../../breezybox-cardputer/apps/ccleste/player.c"
+    "../../breezybox-cardputer/apps/ccleste/level.c"
+    "../../breezybox-cardputer/apps/ccleste/vfx.c"
+    "../../breezybox-cardputer/apps/ccleste/gfx_esp32.c"
+    "../../breezybox-cardputer/apps/ccleste/sprites.c"
 )
 
 if(BREEZY_BOARD STREQUAL "sticks3")
@@ -41,4 +47,5 @@ idf_component_register(
     # --- Include Directories ---
     INCLUDE_DIRS
         "."
+        "../../breezybox-cardputer/apps/ccleste"
 )

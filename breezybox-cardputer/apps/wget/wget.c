@@ -13,6 +13,25 @@
 /* Wrapper function provided by firmware - avoids struct layout issues */
 int breezy_http_download(const char *url, const char *dest_path);
 
+static int url_has_valid_host(const char *url)
+{
+    const char *host = NULL;
+
+    if (strncmp(url, "http://", 7) == 0) {
+        host = url + 7;
+    } else if (strncmp(url, "https://", 8) == 0) {
+        host = url + 8;
+    } else {
+        return 0;
+    }
+
+    if (*host == '\0' || *host == '/' || *host == ':') {
+        return 0;
+    }
+
+    return 1;
+}
+
 /* Extract filename from URL path */
 static const char *url_filename(const char *url)
 {
@@ -36,6 +55,10 @@ int main(int argc, char **argv)
     /* Validate URL */
     if (strncmp(url, "http://", 7) != 0 && strncmp(url, "https://", 8) != 0) {
         printf("wget: URL must start with http:// or https://\n");
+        return 1;
+    }
+    if (!url_has_valid_host(url)) {
+        printf("wget: invalid URL host in '%s'\n", url);
         return 1;
     }
 
