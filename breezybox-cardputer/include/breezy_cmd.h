@@ -46,7 +46,9 @@ int cmd_sleep(int argc, char **argv);
 int cmd_eget(int argc, char **argv);
 int cmd_ping(int argc, char **argv);
 int cmd_lua(int argc, char **argv);
+#ifdef BREEZY_BOARD_CARDPUTER
 int cmd_ccleste(int argc, char **argv);
+#endif
 int cmd_ssh(int argc, char **argv);
 int cmd_sshcfg(int argc, char **argv);
 int cmd_scp(int argc, char **argv);

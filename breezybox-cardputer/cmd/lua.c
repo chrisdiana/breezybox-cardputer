@@ -4387,10 +4387,6 @@ static int run_lua_repl(lua_State *L)
 
 int cmd_lua(int argc, char **argv)
 {
-    if (argc == 2 && strcmp(argv[1], "guide") == 0) {
-        return breezybox_exec("more /root/lua/GUIDE.txt");
-    }
-
     bool run_file_mode = !(argc == 1 || (argc == 2 && strcmp(argv[1], "shell") == 0) ||
                            (argc >= 3 && strcmp(argv[1], "-e") == 0));
     char *preloaded_source = NULL;
