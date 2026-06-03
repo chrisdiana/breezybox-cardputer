@@ -32,8 +32,8 @@ help:
 	@echo "  make app-flash          Flash only the app partition and preserve /root"
 	@echo "  make fs-flash           Flash only the /root LittleFS partition"
 	@echo "  make monitor            Open the breezybox-firmware serial monitor on $(PORT)"
-	@echo "  make final-package      Build the shared install image (.bin) for Launcher or direct flashing"
-	@echo "  make launcher-package   Alias for final-package"
+	@echo "  make final-package      Build the full flash image (.bin)"
+	@echo "  make launcher-package   Build the app-only Launcher-compatible image"
 	@echo "  make erase              Erase flash on $(PORT)"
 	@echo "  make cardputer-build    Alias for firmware-build"
 	@echo "  make firmware-build     Build the BreezyBox Cardputer port only"
@@ -75,7 +75,9 @@ firmware-build: check-firmware
 final-package: firmware-build
 	python3 tools/build_launcher_bin.py --build-dir $(BUILD_DIR) --firmware-dir $(FIRMWARE_DIR) --out $(BUILD_DIR)/breezybox-$(BOARD).bin
 
-launcher-package: final-package
+launcher-package: firmware-build
+	cp $(BUILD_DIR)/breezybox_cardputer.bin $(BUILD_DIR)/breezybox-$(BOARD).bin
+	@echo "Launcher-compatible app image written to $(BUILD_DIR)/breezybox-$(BOARD).bin"
 
 breezydemo-build: firmware-build
 

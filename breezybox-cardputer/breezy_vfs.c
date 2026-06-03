@@ -261,6 +261,17 @@ static esp_err_t try_mount_fat_root(void)
     return ret;
 }
 
+static void set_initial_cwd(void)
+{
+    if (s_root_fs_kind != BREEZYBOX_ROOT_FS_NONE) {
+        strcpy(s_cwd, BREEZYBOX_MOUNT_POINT);
+    } else if (s_sd_mounted) {
+        strcpy(s_cwd, BREEZYBOX_SD_MOUNT_POINT);
+    } else {
+        strcpy(s_cwd, "/");
+    }
+}
+
 esp_err_t breezybox_vfs_init(void)
 {
     s_sd_mounted = false;
@@ -285,15 +296,12 @@ esp_err_t breezybox_vfs_init(void)
 
                 ret = try_mount_spiffs_root();
                 if (ret != ESP_OK) {
-                    if (ret == ESP_FAIL) {
-                        printf("Failed to mount or format internal filesystem\n");
-                    } else if (ret == ESP_ERR_NOT_FOUND) {
-                        printf("No compatible internal filesystem partition found\n");
-                    }
-                    return ret;
+                    ESP_LOGI(TAG, "No internal filesystem partition mounted; running without %s", BREEZYBOX_MOUNT_POINT);
                 }
 
-                ESP_LOGI(TAG, "Mounted %s from SPIFFS partition", BREEZYBOX_MOUNT_POINT);
+                if (ret == ESP_OK) {
+                    ESP_LOGI(TAG, "Mounted %s from SPIFFS partition", BREEZYBOX_MOUNT_POINT);
+                }
             } else {
                 ESP_LOGI(TAG, "Mounted %s from FAT partition", BREEZYBOX_MOUNT_POINT);
             }
@@ -301,6 +309,6 @@ esp_err_t breezybox_vfs_init(void)
     }
 
     try_mount_sd_card();
-    strcpy(s_cwd, BREEZYBOX_MOUNT_POINT);
+    set_initial_cwd();
     return ESP_OK;
 }

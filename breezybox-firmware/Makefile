@@ -6,8 +6,8 @@ IDF_PY ?= idf.py
 help:
 	@echo "Targets:"
 	@echo "  make build           Reconfigure and build firmware plus LittleFS image"
-	@echo "  make final-package    Build the shared install image (.bin) for Launcher or direct flashing"
-	@echo "  make launcher-package Alias for final-package"
+	@echo "  make final-package    Build the full flash image (.bin)"
+	@echo "  make launcher-package Build the app-only Launcher-compatible image"
 	@echo "  make flash           Flash firmware to $(PORT)"
 	@echo "  make app-flash       Flash only the app partition and preserve /root"
 	@echo "  make fs-flash        Flash only the /root LittleFS partition"
@@ -33,7 +33,9 @@ build: check-idf
 final-package: build
 	python3 ../tools/build_launcher_bin.py --build-dir build --firmware-dir . --out build/breezybox-cardputer.bin
 
-launcher-package: final-package
+launcher-package: build
+	cp build/breezybox_cardputer.bin build/breezybox-cardputer.bin
+	@echo "Launcher-compatible app image written to build/breezybox-cardputer.bin"
 
 flash: check-idf
 	$(IDF_PY) -p $(PORT) reconfigure flash
