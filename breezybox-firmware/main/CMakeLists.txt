@@ -11,10 +11,23 @@ set(BOARD_SRCS
     "cmd_gunzip_builtin.c"
 )
 
+set(BOARD_INCLUDE_DIRS ".")
+
 if(BREEZY_BOARD STREQUAL "sticks3")
     list(APPEND BOARD_SRCS "board_m5stickc.c")
 else()
-    list(APPEND BOARD_SRCS "board_cardputer.c" "cardputer_keyboard.c" "ssh_app_mode.c")
+    list(APPEND BOARD_SRCS
+        "board_cardputer.c"
+        "cardputer_keyboard.c"
+        "ssh_app_mode.c"
+        "cmd_ccleste_builtin.c"
+        "../../breezybox-cardputer/apps/ccleste/player.c"
+        "../../breezybox-cardputer/apps/ccleste/level.c"
+        "../../breezybox-cardputer/apps/ccleste/vfx.c"
+        "../../breezybox-cardputer/apps/ccleste/gfx_esp32.c"
+        "../../breezybox-cardputer/apps/ccleste/sprites.c"
+    )
+    list(APPEND BOARD_INCLUDE_DIRS "../../breezybox-cardputer/apps/ccleste")
 endif()
 
 # Register the 'main' component with the build system.
@@ -40,5 +53,5 @@ idf_component_register(
 
     # --- Include Directories ---
     INCLUDE_DIRS
-        "."
+        ${BOARD_INCLUDE_DIRS}
 )

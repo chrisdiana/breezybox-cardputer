@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#if defined(BREEZY_BOARD_CARDPUTER)
 #include "driver/usb_serial_jtag.h"
 #include "driver/usb_serial_jtag_vfs.h"
-#endif
 #include "esp_log.h"
 #include "esp_console.h"
 #include "nvs_flash.h"
@@ -35,6 +33,9 @@ static int cmd_keytest(int argc, char **argv);
 static int cmd_colortest(int argc, char **argv);
 static int cmd_setcon(int argc, char **argv);
 extern int cmd_testgfx(int argc, char **argv);
+#if defined(BREEZY_BOARD_CARDPUTER)
+extern int cmd_ccleste_builtin_main(int argc, char **argv);
+#endif
 extern int cmd_plasma_builtin_main(int argc, char **argv);
 extern int cmd_termbench_builtin_main(int argc, char **argv);
 extern int cmd_vi_builtin_main(int argc, char **argv);
@@ -55,6 +56,9 @@ static const esp_console_cmd_t s_app_cmds[] = {
     { .command = "keytest", .help = "Keys test", .func = &cmd_keytest },
     { .command = "colortest", .help = "ANSI colors test", .func = &cmd_colortest },
     { .command = "setcon", .help = "Set console output", .hint = "<lcd|usb|both>", .func = &cmd_setcon },
+#if defined(BREEZY_BOARD_CARDPUTER)
+    { .command = "celeste", .help = "Celeste Classic / Scrolleste", .func = &cmd_ccleste_builtin_main },
+#endif
     { .command = "plasma", .help = "ANSI plasma demo", .func = &cmd_plasma_builtin_main },
     { .command = "termbench", .help = "Terminal benchmark", .hint = "[-q] [-d seconds] [-s cols rows]", .func = &cmd_termbench_builtin_main },
     { .command = "vi", .help = "Text editor", .hint = "[file]", .func = &cmd_vi_builtin_main },
@@ -74,6 +78,7 @@ static const breezybox_help_entry_t s_app_help[] = {
     { "keytest", "keytest", "Print raw keypresses until Ctrl+C.", NULL, "keytest" },
     { "colortest", "colortest", "Show ANSI color output samples.", NULL, "colortest" },
     { "setcon", "setcon <lcd|usb|both|usbreset>", "Set console output routing.", "lcd      LCD only\nusb      USB only\nboth     LCD and USB\nusbreset reset USB detection", "setcon both\nsetcon lcd\nsetcon usbreset" },
+    { "celeste", "celeste", "Run the built-in Celeste Classic / Scrolleste port.", NULL, "celeste" },
     { "plasma", "plasma", "Run the ANSI plasma demo.", NULL, "plasma" },
     { "termbench", "termbench [-q] [-d seconds] [-s cols rows]", "Run the terminal benchmark.", "-q           quiet mode\n-d seconds   duration\n-s cols rows screen size", "termbench\ntermbench -d 10\ntermbench -q -s 40 16" },
     { "vi", "vi [file]", "Open the text editor.", NULL, "vi\nvi notes.txt" },
@@ -411,14 +416,12 @@ static void main_loop(void)
 
 void app_main(void)
 {
-#if defined(BREEZY_BOARD_CARDPUTER)
     usb_serial_jtag_driver_config_t usb_config = {
         .tx_buffer_size = 256,
         .rx_buffer_size = 256,
     };
     ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb_config));
     usb_serial_jtag_vfs_use_driver();
-#endif
 
     printf("\n--- Boot sequence complete. Starting ESP32-DOS ---\n");
 

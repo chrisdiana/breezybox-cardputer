@@ -160,6 +160,7 @@ int cmd_ping(int argc, char **argv)
     config.count = count;
     config.timeout_ms = timeout_ms;
     config.interval_ms = 1000;
+    config.task_stack_size = 6144;
 
     ctx.done = xSemaphoreCreateBinary();
     if (!ctx.done) {

@@ -2,7 +2,8 @@
 
 > Cardputer ADV and StickS3 port of BreezyBox, a BusyBox-inspired shell and virtual terminal system for ESP32 with added features like Wi-Fi, Bluetooth keyboard support, bundled built-in apps, and an embedded Lua runtime.
 
-<img src="docs/screenshot.png" alt="Screenshot of Breezybox on Cardputer" width="350" />
+<img src="docs/screenshot.png" alt="Screenshot of Breezybox on Cardputer" width="300" />
+<img src="docs/screenshot2.png" alt="Screenshot of Breezybox on Cardputer" width="300" />
 
 ## Features
 * Unix-like Shell: Familiar commands like `ls`, `cat`, `echo`, `cd`, `pwd`, `cp`, `mv`, `rm`, `mkdir`, `sed`, `grep`
@@ -60,25 +61,6 @@ make flash BOARD=sticks3 PORT=/dev/cu.usbmodemXXXX
 make monitor BOARD=sticks3 PORT=/dev/cu.usbmodemXXXX
 ```
 
-Useful targets:
-
-```sh
-make build
-make launcher-package
-make flash
-make monitor
-make erase
-make rebuild
-```
-
-Launcher install image:
-
-```sh
-make launcher-package
-```
-
-This writes a Launcher-compatible `.bin` into the firmware build directory. The package uses Launcher's `vfs` FAT partition for `/root`, so Lua examples and other nested directories are preserved.
-
 ## Serial Monitor
 
 From the repo root:
@@ -92,6 +74,11 @@ If `idf.py monitor` is running, exit with:
 ```text
 Ctrl-]
 ```
+
+## Lua Scripts
+
+Starter scripts and examples for GUI and TUI based applications along with APIs are located in lua-apps.
+You can copy these to your SD card and run them using `lua` in BreezyBox.
 
 ## Keyboard Notes
 

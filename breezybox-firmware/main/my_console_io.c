@@ -11,9 +11,7 @@
 #include "esp_vfs.h"
 #include "esp_vfs_dev.h"
 #include "esp_log.h"
-#if defined(BREEZY_BOARD_CARDPUTER)
 #include "driver/usb_serial_jtag.h"
-#endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <string.h>
@@ -99,11 +97,9 @@ static ssize_t my_console_write(int fd, const void *data, size_t size)
 
     // In graphics mode, skip vterm entirely - output goes to USB only
     if (s_output_mode == CONSOLE_OUT_GFX) {
-#if defined(BREEZY_BOARD_CARDPUTER)
         if (s_usb_connected) {
             usb_serial_jtag_write_bytes(data, size, pdMS_TO_TICKS(1));
         }
-#endif
         return size;
     }
 
@@ -119,7 +115,6 @@ static ssize_t my_console_write(int fd, const void *data, size_t size)
 
     // Write to USB Serial if enabled and USB is connected
     if ((s_output_mode == CONSOLE_OUT_BOTH || s_output_mode == CONSOLE_OUT_USB) && s_usb_connected) {
-#if defined(BREEZY_BOARD_CARDPUTER)
         // Skip device status queries to avoid duplicate responses from remote terminal
         if (!is_terminal_probe(str, size)) {
             // Use a short timeout (1ms) to detect disconnection quickly
@@ -141,7 +136,6 @@ static ssize_t my_console_write(int fd, const void *data, size_t size)
                 }
             }
         }
-#endif
     }
 
     return size;
@@ -157,13 +151,11 @@ static ssize_t my_console_read(int fd, void *data, size_t size)
     while (count < size) {
         // Drain USB bytes into vterm input queue
         char c;
-#if defined(BREEZY_BOARD_CARDPUTER)
         while (usb_serial_jtag_read_bytes(&c, 1, 0) > 0) {
             // Convert CR to LF - terminals send \r, linenoise expects \n
             if (c == '\r') c = '\n';
             vterm_input_feed(c);
         }
-#endif
         
         int active = vterm_get_active();
         // First char: wait with timeout. Subsequent chars: no wait (fill buffer if available)
@@ -278,13 +270,9 @@ static int my_console_fcntl(int fd, int cmd, int arg)
 // Callback when VT is switched
 static void on_vt_switch(int new_vt)
 {
-#if defined(BREEZY_BOARD_CARDPUTER)
     char msg[32];
     snprintf(msg, sizeof(msg), "\r\n[Switched to VT%d]\r\n", new_vt);
     usb_serial_jtag_write_bytes(msg, strlen(msg), pdMS_TO_TICKS(10));
-#else
-    (void)new_vt;
-#endif
 
     // Sync cursor for new VT
     sync_display_cursor();
@@ -295,18 +283,15 @@ static int usb_log_vprintf(const char *fmt, va_list args)
 {
     char buf[256];
     int len = vsnprintf(buf, sizeof(buf), fmt, args);
-#if defined(BREEZY_BOARD_CARDPUTER)
     if (len > 0) {
         usb_serial_jtag_write_bytes(buf, len, pdMS_TO_TICKS(10));
     }
-#endif
     return len;
 }
 
 // Probe USB connectivity by attempting a small write
 static void probe_usb_connection(void)
 {
-#if defined(BREEZY_BOARD_CARDPUTER)
     // Try to write a single byte with very short timeout
     // If it fails, USB is likely not connected
     char probe = '\0';  // Null byte won't affect anything
@@ -319,10 +304,6 @@ static void probe_usb_connection(void)
         s_usb_connected = 1;
         s_usb_fail_count = 0;
     }
-#else
-    s_usb_connected = 0;
-    s_usb_fail_count = USB_FAIL_THRESHOLD;
-#endif
 }
 
 // --- Display component callbacks ---

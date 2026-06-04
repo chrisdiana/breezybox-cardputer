@@ -182,6 +182,14 @@ int cmd_ln(int argc, char **argv)
     return 0;
 }
 
+#ifdef BREEZY_BOARD_CARDPUTER
+int cmd_ccleste(int argc, char **argv)
+{
+    extern int cmd_ccleste_builtin_main(int argc, char **argv);
+    return cmd_ccleste_builtin_main(argc, argv);
+}
+#endif
+
 static int find_walk(const char *path, const char *pattern, int type_filter)
 {
     struct stat st;

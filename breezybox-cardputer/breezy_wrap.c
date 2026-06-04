@@ -31,13 +31,28 @@ typedef struct {
     struct dirent entry;
 } virtual_root_dir_t;
 
-// Mount points to show at "/"
-static const char *s_mount_names[] = { "root", "sd" };
-#define NUM_MOUNTS (sizeof(s_mount_names) / sizeof(s_mount_names[0]))
-
-static int virtual_root_entry_count(void)
+static const char *virtual_root_entry_name(int index)
 {
-    return breezybox_sd_mounted() ? 2 : 1;
+    if (breezybox_root_fs_kind() != BREEZYBOX_ROOT_FS_NONE) {
+        if (index == 0) {
+            return "root";
+        }
+        index--;
+    }
+    if (breezybox_sd_mounted() && index == 0) {
+        return "sd";
+    }
+    return NULL;
+}
+
+static bool path_is_mounted_root(const char *path)
+{
+    return strcmp(path, "/root") == 0 && breezybox_root_fs_kind() != BREEZYBOX_ROOT_FS_NONE;
+}
+
+static bool path_is_mounted_sd(const char *path)
+{
+    return strcmp(path, "/sd") == 0 && breezybox_sd_mounted();
 }
 
 // ============ Wrapped Functions ============
@@ -104,8 +119,7 @@ int __wrap_stat(const char *path, struct stat *st)
     if (!p) p = path;
 
     // Virtual directories
-    if (strcmp(p, "/") == 0 || strcmp(p, "/root") == 0 ||
-        (breezybox_sd_mounted() && strcmp(p, "/sd") == 0)) {
+    if (strcmp(p, "/") == 0 || path_is_mounted_root(p) || path_is_mounted_sd(p)) {
         memset(st, 0, sizeof(struct stat));
         st->st_mode = S_IFDIR | 0755;
         st->st_nlink = 1;
@@ -133,6 +147,11 @@ DIR* __wrap_opendir(const char *name)
         return (DIR*)vdir;
     }
 
+    if (strcmp(p, "/root") == 0 && breezybox_root_fs_kind() == BREEZYBOX_ROOT_FS_NONE) {
+        errno = ENOENT;
+        return NULL;
+    }
+
     return __real_opendir(p);
 }
 
@@ -142,11 +161,12 @@ struct dirent* __wrap_readdir(DIR* dirp)
 
     virtual_root_dir_t *vdir = (virtual_root_dir_t*)dirp;
     if (vdir->magic == VIRTUAL_ROOT_MAGIC) {
-        if (vdir->index >= virtual_root_entry_count()) return NULL;
+        const char *name = virtual_root_entry_name(vdir->index);
+        if (!name) return NULL;
         
         vdir->entry.d_ino = vdir->index + 1;
         vdir->entry.d_type = DT_DIR;
-        strcpy(vdir->entry.d_name, s_mount_names[vdir->index]);
+        strcpy(vdir->entry.d_name, name);
         vdir->index++;
         return &vdir->entry;
     }
@@ -189,8 +209,7 @@ char* __wrap_realpath(const char *path, char *resolved_path)
     const char *p = breezybox_resolve_path(path, temp_buffer, sizeof(temp_buffer));
     if (!p) p = path;
 
-    if (strcmp(p, "/") == 0 || strcmp(p, "/root") == 0 ||
-        (breezybox_sd_mounted() && strcmp(p, "/sd") == 0)) {
+    if (strcmp(p, "/") == 0 || path_is_mounted_root(p) || path_is_mounted_sd(p)) {
         const char* target = "/";
         if (strcmp(p, "/root") == 0) {
             target = "/root";

@@ -73,7 +73,7 @@ static const breezybox_help_entry_t s_core_help[] = {
     { "eget", "eget <user/repo>", "Download ELF files from a GitHub release.", NULL, "eget user/repo" },
     { "wifi", "wifi <scan|connect|disconnect|status|forget>", "WiFi management commands.", "connect [ssid] [password]\nIf ssid is omitted, use saved credentials.", "wifi scan\nwifi connect MySSID secret\nwifi connect\nwifi status" },
     { "ping", "ping [-c count] [-W timeout_ms] <host>", "Send ICMP echo requests to a host.", "-c count       number of packets\n-W timeout_ms  timeout per packet in milliseconds", "ping example.com\nping -c 2 1.1.1.1\nping -W 2000 google.com" },
-    { "lua", "lua [guide|shell|-e <chunk>|<script.lua> [args...]]", "Run embedded Lua scripts, open a Lua REPL, or show the on-device guide.", "guide         open the on-device Lua guide\nshell         open the interactive Lua REPL\n-e <chunk>    run a one-line Lua chunk\n<script.lua>  run a Lua script from shared storage", "lua guide\nlua\nlua shell\nlua -e 'print(2+2)'\nlua /root/apps/demo.lua" },
+    { "lua", "lua [shell|-e <chunk>|<script.lua> [args...]]", "Run embedded Lua scripts or open a Lua REPL.", "shell         open the interactive Lua REPL\n-e <chunk>    run a one-line Lua chunk\n<script.lua>  run a Lua script from shared storage", "lua\nlua shell\nlua -e 'print(2+2)'\nlua /root/apps/demo.lua" },
     { "ssh", "ssh [-p port] [-l user] [-pw password] <host|alias> [command...]", "Open an SSH session or run a remote command.", "-p port       remote SSH port\n-l user       remote username\n-pw password  password auth for this run\nCtrl+Q        disconnect interactive session\nSaved aliases resolve via sshcfg", "ssh user@example.com\nssh pi2w\nssh -p 2222 host uname -a" },
     { "sshcfg", "sshcfg <add|list|show|rm> ...", "Manage saved SSH host aliases.", "add <name> <host|user@host> [-l user] [-p port] [-pw password]\nlist\nshow <name>\nrm <name>", "sshcfg add pi2w pi@pi2w\nsshcfg add lab labhost -l pi -pw secret\nsshcfg list\nssh pi2w" },
     { "scp", "scp [-P port] [-l user] [-pw password] <src> <dst>", "Copy a single file to or from an SSH host.", "-P port       remote SSH port\n-l user       remote username\n-pw password  password auth for this run\nRemote paths use [user@]host:/path", "scp /root/file.txt user@example.com:/tmp/file.txt\nscp user@example.com:/tmp/file.txt /sd/file.txt" },
@@ -625,7 +625,10 @@ static const esp_console_cmd_t s_breezybox_cmds[] = {
     { .command = "eget",  .help = "Download ELF from GitHub", .hint = "<user/repo>", .func = &cmd_eget },
     { .command = "wifi",  .help = "WiFi commands",           .hint = "<scan|connect|disconnect|status|forget>", .func = &cmd_wifi },
     { .command = "ping",  .help = "Ping a host",             .hint = "[-c count] [-W timeout_ms] <host>", .func = &cmd_ping },
-    { .command = "lua",   .help = "Run embedded Lua",        .hint = "[guide|shell|-e <chunk>|<script.lua> [args...]]", .func = &cmd_lua },
+    { .command = "lua",   .help = "Run embedded Lua",        .hint = "[shell|-e <chunk>|<script.lua> [args...]]", .func = &cmd_lua },
+#ifdef BREEZY_BOARD_CARDPUTER
+    { .command = "ccleste", .help = "Run the built-in Celeste Classic / Scrolleste port", .hint = NULL, .func = &cmd_ccleste },
+#endif
     { .command = "ssh",   .help = "SSH client",              .hint = "[-p port] [-l user] [-pw password] <host|alias> [command...]", .func = &cmd_ssh },
     { .command = "sshcfg", .help = "Manage saved SSH hosts", .hint = "<add|list|show|rm> ...", .func = &cmd_sshcfg },
     { .command = "scp",   .help = "SSH copy client",         .hint = "[-P port] [-l user] [-pw password] <src> <dst>", .func = &cmd_scp },

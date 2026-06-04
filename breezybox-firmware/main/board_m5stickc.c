@@ -4,8 +4,63 @@
 
 #include "driver/gpio.h"
 #include "driver/ledc.h"
+#include "driver/i2c.h"
 #include "esp_log.h"
 #include <string.h>
+
+#define STICKS3_I2C_PORT  I2C_NUM_0
+#define STICKS3_I2C_SDA   GPIO_NUM_47
+#define STICKS3_I2C_SCL   GPIO_NUM_48
+#define STICKS3_AXP_ADDR  0x34
+
+static esp_err_t axp_write(uint8_t reg, uint8_t val)
+{
+    uint8_t buf[2] = {reg, val};
+    return i2c_master_write_to_device(STICKS3_I2C_PORT, STICKS3_AXP_ADDR, buf, 2, pdMS_TO_TICKS(20));
+}
+
+static esp_err_t axp_read(uint8_t reg, uint8_t *val)
+{
+    return i2c_master_write_read_device(STICKS3_I2C_PORT, STICKS3_AXP_ADDR, &reg, 1, val, 1, pdMS_TO_TICKS(20));
+}
+
+static void sticks3_axp_init(void)
+{
+    i2c_config_t cfg = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = STICKS3_I2C_SDA,
+        .scl_io_num = STICKS3_I2C_SCL,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = 400000,
+    };
+    ESP_ERROR_CHECK(i2c_param_config(STICKS3_I2C_PORT, &cfg));
+    ESP_ERROR_CHECK(i2c_driver_install(STICKS3_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
+
+    // Verify AXP2101 is present
+    uint8_t chip_id = 0;
+    esp_err_t ret = axp_read(0x03, &chip_id);
+    ESP_LOGI("axp", "AXP probe: err=%d chip_id=0x%02x", ret, chip_id);
+
+    if (ret != ESP_OK) {
+        ESP_LOGW("axp", "AXP2101 not found on GPIO47/48, skipping init");
+        return;
+    }
+
+    // ALDO2 = 3.3V (LCD AVDD) - reg 0x28 voltage, enable via reg 0x90 bit 5
+    axp_write(0x28, 0x1c);  // 3300mV (0x1c = 28, 500mV + 28*100mV = 3300mV)
+    uint8_t aldo_en = 0;
+    axp_read(0x90, &aldo_en);
+    axp_write(0x90, aldo_en | (1 << 5) | (1 << 6));  // enable ALDO2 and ALDO3
+
+    // DLDO1 = 3.3V (LCD backlight power)
+    axp_write(0x99, 0x1c);
+    uint8_t dldo_en = 0;
+    axp_read(0x91, &dldo_en);
+    axp_write(0x91, dldo_en | (1 << 0));  // enable DLDO1
+
+    ESP_LOGI("axp", "AXP2101 init complete");
+}
 
 #define STICKS3_BTN_A GPIO_NUM_11
 #define STICKS3_BTN_B GPIO_NUM_12
@@ -37,7 +92,7 @@ static const board_display_config_t s_board_cfg = {
     .pin_cs = 41,
     .pin_dc = 45,
     .pin_rst = 21,
-    .invert_color = false,
+    .invert_color = true,
     .swap_xy = true,
     .mirror_x = true,
     .mirror_y = false,
@@ -277,38 +332,23 @@ const board_display_config_t *board_get_display_config(void)
 
 esp_err_t board_display_power_init(void)
 {
-    ledc_timer_config_t timer_cfg = {
-        .speed_mode = STICKS3_BL_MODE,
-        .timer_num = STICKS3_BL_TIMER,
-        .duty_resolution = STICKS3_BL_RES,
-        .freq_hz = STICKS3_BL_FREQ_HZ,
-        .clk_cfg = LEDC_AUTO_CLK,
-    };
-    ESP_ERROR_CHECK(ledc_timer_config(&timer_cfg));
+    sticks3_axp_init();
 
-    ledc_channel_config_t channel_cfg = {
-        .gpio_num = STICKS3_LCD_BL,
-        .speed_mode = STICKS3_BL_MODE,
-        .channel = STICKS3_BL_CHANNEL,
-        .intr_type = LEDC_INTR_DISABLE,
-        .timer_sel = STICKS3_BL_TIMER,
-        .duty = 0,
-        .hpoint = 0,
-        .flags.output_invert = 0,
+    gpio_config_t bl_cfg = {
+        .pin_bit_mask = (1ULL << STICKS3_LCD_BL),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
     };
-    ESP_ERROR_CHECK(ledc_channel_config(&channel_cfg));
+    ESP_ERROR_CHECK(gpio_config(&bl_cfg));
+    gpio_set_level(STICKS3_LCD_BL, 0);
     return ESP_OK;
 }
 
 void board_set_backlight(uint8_t level)
 {
-    uint32_t max_duty = (1U << STICKS3_BL_RES) - 1U;
-    uint32_t duty = (max_duty * level) / 255U;
-
-    if (ledc_set_duty(STICKS3_BL_MODE, STICKS3_BL_CHANNEL, duty) != ESP_OK) {
-        return;
-    }
-    (void)ledc_update_duty(STICKS3_BL_MODE, STICKS3_BL_CHANNEL);
+    gpio_set_level(STICKS3_LCD_BL, level > 0 ? 1 : 0);
 }
 
 esp_err_t board_input_init(board_char_cb_t cb)
