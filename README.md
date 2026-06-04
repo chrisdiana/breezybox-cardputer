@@ -2,7 +2,8 @@
 
 > Cardputer ADV and StickS3 port of BreezyBox, a BusyBox-inspired shell and virtual terminal system for ESP32 with added features like Wi-Fi, Bluetooth keyboard support, bundled built-in apps, and an embedded Lua runtime.
 
-<img src="docs/screenshot.png" alt="Screenshot of Breezybox on Cardputer" width="350" />
+<img src="docs/screenshot.png" alt="Screenshot of Breezybox on Cardputer" width="300" />
+<img src="docs/screenshot2.png" alt="Screenshot of Breezybox on Cardputer" width="300" />
 
 ## Features
 * Unix-like Shell: Familiar commands like `ls`, `cat`, `echo`, `cd`, `pwd`, `cp`, `mv`, `rm`, `mkdir`, `sed`, `grep`
@@ -60,37 +61,6 @@ make flash BOARD=sticks3 PORT=/dev/cu.usbmodemXXXX
 make monitor BOARD=sticks3 PORT=/dev/cu.usbmodemXXXX
 ```
 
-Useful targets:
-
-```sh
-make build
-make final-package
-make launcher-package
-make flash
-make app-flash
-make fs-flash
-make monitor
-make erase
-make rebuild
-```
-
-Shared install image:
-
-```sh
-make final-package
-```
-
-This writes a single `.bin` into the firmware build directory that can be used either through Launcher or flashed directly at offset `0x0`. `make launcher-package` remains as an alias for the same unified image.
-
-Partial update targets:
-
-```sh
-make app-flash PORT=/dev/cu.usbmodem1101
-make fs-flash PORT=/dev/cu.usbmodem1101
-```
-
-`app-flash` updates only the firmware at `0x10000` and preserves the `/root` LittleFS partition. `fs-flash` updates only `/root` by writing `spiffs.bin` at `0x4f0000`.
-
 ## Serial Monitor
 
 From the repo root:
@@ -104,6 +74,11 @@ If `idf.py monitor` is running, exit with:
 ```text
 Ctrl-]
 ```
+
+## Lua Scripts
+
+Starter scripts and examples for GUI and TUI based applications along with APIs are located in lua-apps.
+You can copy these to your SD card and run them using `lua` in BreezyBox.
 
 ## Keyboard Notes
 

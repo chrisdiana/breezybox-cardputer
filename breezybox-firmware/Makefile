@@ -34,8 +34,7 @@ final-package: build
 	python3 ../tools/build_launcher_bin.py --build-dir build --firmware-dir . --out build/breezybox-cardputer.bin
 
 launcher-package: build
-	cp build/breezybox_cardputer.bin build/breezybox-cardputer.bin
-	@echo "Launcher-compatible app image written to build/breezybox-cardputer.bin"
+	python3 ../tools/build_launcher_bin.py --build-dir build --firmware-dir . --out build/breezybox-cardputer.bin
 
 flash: check-idf
 	$(IDF_PY) -p $(PORT) reconfigure flash

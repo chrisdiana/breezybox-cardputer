@@ -76,8 +76,7 @@ final-package: firmware-build
 	python3 tools/build_launcher_bin.py --build-dir $(BUILD_DIR) --firmware-dir $(FIRMWARE_DIR) --out $(BUILD_DIR)/breezybox-$(BOARD).bin
 
 launcher-package: firmware-build
-	cp $(BUILD_DIR)/breezybox_cardputer.bin $(BUILD_DIR)/breezybox-$(BOARD).bin
-	@echo "Launcher-compatible app image written to $(BUILD_DIR)/breezybox-$(BOARD).bin"
+	python3 tools/build_launcher_bin.py --build-dir $(BUILD_DIR) --firmware-dir $(FIRMWARE_DIR) --out $(BUILD_DIR)/breezybox-$(BOARD).bin
 
 breezydemo-build: firmware-build
 
