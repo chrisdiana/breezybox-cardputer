@@ -3,6 +3,8 @@
 #include "vterm.h"
 
 #include "driver/i2c.h"
+#include "driver/gpio.h"
+#include "esp_check.h"
 #include "esp_log.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -10,11 +12,11 @@
 
 static const char *TAG = "cardputer_kbd";
 
-#define KBD_I2C_PORT            I2C_NUM_1
-#define KBD_I2C_SCL             GPIO_NUM_9
-#define KBD_I2C_SDA             GPIO_NUM_8
-#define KBD_I2C_FREQ_HZ         400000
-#define KBD_I2C_ADDR            0x34
+#define KBD_I2C_PORT I2C_NUM_1
+#define KBD_I2C_SCL GPIO_NUM_9
+#define KBD_I2C_SDA GPIO_NUM_8
+#define KBD_I2C_FREQ_HZ 400000
+#define KBD_I2C_ADDR 0x34
 
 #define TCA8418_REG_CFG             0x01
 #define TCA8418_REG_INT_STAT        0x02
@@ -40,6 +42,28 @@ static const char *TAG = "cardputer_kbd";
 #define TCA8418_REG_GPIO_INT_LVL_3  0x28
 #define TCA8418_REG_CFG_GPI_IEN     0x02
 #define TCA8418_REG_CFG_KE_IEN      0x01
+#define KBD_MATRIX_OUTPUT_COUNT 3
+#define KBD_MATRIX_INPUT_COUNT 7
+
+static const gpio_num_t s_matrix_outputs[KBD_MATRIX_OUTPUT_COUNT] = {
+    GPIO_NUM_8,
+    GPIO_NUM_9,
+    GPIO_NUM_11,
+};
+
+static const gpio_num_t s_matrix_inputs[KBD_MATRIX_INPUT_COUNT] = {
+    GPIO_NUM_13,
+    GPIO_NUM_15,
+    GPIO_NUM_3,
+    GPIO_NUM_4,
+    GPIO_NUM_5,
+    GPIO_NUM_6,
+    GPIO_NUM_7,
+};
+
+static const uint8_t s_matrix_columns[KBD_MATRIX_INPUT_COUNT][2] = {
+    {0, 1}, {2, 3}, {4, 5}, {6, 7}, {8, 9}, {10, 11}, {12, 13},
+};
 
 #define SCROLLBACK_STEP (VTERM_ROWS - 2)
 #define KEY_QUEUE_SIZE 32
@@ -54,6 +78,12 @@ typedef struct {
     uint8_t col;
     bool pressed;
 } key_event_t;
+
+typedef enum {
+    KEYBOARD_CONTROLLER_NONE,
+    KEYBOARD_CONTROLLER_TCA8418,
+    KEYBOARD_CONTROLLER_MATRIX,
+} keyboard_controller_t;
 
 static const key_value_t s_key_value_map[4][14] = {
     {{'`', '~'}, {'1', '!'}, {'2', '@'}, {'3', '#'}, {'4', '$'}, {'5', '%'}, {'6', '^'},
@@ -70,6 +100,7 @@ static bool s_key_state[4][14];
 static cardputer_keyboard_char_cb_t s_char_cb;
 static cardputer_keyboard_key_cb_t s_key_cb;
 static bool s_ready;
+static keyboard_controller_t s_controller;
 static volatile uint32_t s_poll_interval_ms = 10;
 static volatile int s_background_poll_enabled = 1;
 static cardputer_keyboard_key_event_t s_key_queue[KEY_QUEUE_SIZE];
@@ -308,7 +339,7 @@ static void handle_press(uint8_t row, uint8_t col)
     emit_char(shift ? s_key_value_map[row][col].value_second : base);
 }
 
-esp_err_t cardputer_keyboard_init(cardputer_keyboard_char_cb_t cb)
+static esp_err_t init_i2c_keyboard_bus(void)
 {
     i2c_config_t conf = {
         .mode = I2C_MODE_MASTER,
@@ -320,11 +351,15 @@ esp_err_t cardputer_keyboard_init(cardputer_keyboard_char_cb_t cb)
         .clk_flags = 0,
     };
 
-    s_char_cb = cb;
+    esp_err_t result = i2c_param_config(KBD_I2C_PORT, &conf);
+    if (result != ESP_OK) {
+        return result;
+    }
+    return i2c_driver_install(KBD_I2C_PORT, conf.mode, 0, 0, 0);
+}
 
-    ESP_ERROR_CHECK_WITHOUT_ABORT(i2c_param_config(KBD_I2C_PORT, &conf));
-    ESP_ERROR_CHECK_WITHOUT_ABORT(i2c_driver_install(KBD_I2C_PORT, conf.mode, 0, 0, 0));
-
+static esp_err_t init_tca8418_keyboard(void)
+{
     if (write_reg(TCA8418_REG_GPIO_DIR_1, 0x00) != ESP_OK ||
         write_reg(TCA8418_REG_GPIO_DIR_2, 0x00) != ESP_OK ||
         write_reg(TCA8418_REG_GPIO_DIR_3, 0x00) != ESP_OK ||
@@ -340,14 +375,73 @@ esp_err_t cardputer_keyboard_init(cardputer_keyboard_char_cb_t cb)
         write_reg(TCA8418_REG_KP_GPIO_1, 0x7F) != ESP_OK ||
         write_reg(TCA8418_REG_KP_GPIO_2, 0xFF) != ESP_OK ||
         write_reg(TCA8418_REG_CFG, TCA8418_REG_CFG_GPI_IEN | TCA8418_REG_CFG_KE_IEN) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize TCA8418 keyboard");
         return ESP_FAIL;
     }
 
-    memset(s_key_state, 0, sizeof(s_key_state));
     flush_events();
+    return ESP_OK;
+}
+
+static esp_err_t init_matrix_keyboard(void)
+{
+    uint64_t output_mask = 0;
+    uint64_t input_mask = 0;
+
+    for (size_t index = 0; index < KBD_MATRIX_OUTPUT_COUNT; ++index) {
+        output_mask |= 1ULL << s_matrix_outputs[index];
+    }
+    for (size_t index = 0; index < KBD_MATRIX_INPUT_COUNT; ++index) {
+        input_mask |= 1ULL << s_matrix_inputs[index];
+    }
+
+    gpio_config_t output_config = {
+        .pin_bit_mask = output_mask,
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    gpio_config_t input_config = {
+        .pin_bit_mask = input_mask,
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+
+    ESP_RETURN_ON_ERROR(gpio_config(&output_config), TAG, "configure keyboard outputs");
+    ESP_RETURN_ON_ERROR(gpio_config(&input_config), TAG, "configure keyboard inputs");
+
+    for (size_t index = 0; index < KBD_MATRIX_OUTPUT_COUNT; ++index) {
+        gpio_set_level(s_matrix_outputs[index], 0);
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t cardputer_keyboard_init(cardputer_keyboard_char_cb_t cb)
+{
+    uint8_t controller_config = 0;
+
+    s_char_cb = cb;
+    s_ready = false;
+    s_controller = KEYBOARD_CONTROLLER_NONE;
+    memset(s_key_state, 0, sizeof(s_key_state));
+
+    if (init_i2c_keyboard_bus() == ESP_OK &&
+        read_reg(TCA8418_REG_CFG, &controller_config) == ESP_OK &&
+        init_tca8418_keyboard() == ESP_OK) {
+        s_controller = KEYBOARD_CONTROLLER_TCA8418;
+        s_ready = true;
+        ESP_LOGI(TAG, "Cardputer ADV keyboard ready");
+        return ESP_OK;
+    }
+
+    (void)i2c_driver_delete(KBD_I2C_PORT);
+    ESP_RETURN_ON_ERROR(init_matrix_keyboard(), TAG, "initialize keyboard matrix");
+    s_controller = KEYBOARD_CONTROLLER_MATRIX;
     s_ready = true;
-    ESP_LOGI(TAG, "Cardputer ADV keyboard ready");
+    ESP_LOGI(TAG, "Original Cardputer keyboard ready");
     return ESP_OK;
 }
 
@@ -357,15 +451,65 @@ static void cardputer_keyboard_poll_impl(void)
     uint8_t raw = 0;
     bool saw_events = false;
 
-    if (!s_ready || read_reg(TCA8418_REG_KEY_LCK_EC, &pending) != ESP_OK) {
+    if (!s_ready) {
+        return;
+    }
+
+    if (s_controller == KEYBOARD_CONTROLLER_MATRIX) {
+        bool scanned_state[4][14] = {0};
+
+        for (uint8_t output = 0; output < 8; ++output) {
+            for (size_t bit = 0; bit < KBD_MATRIX_OUTPUT_COUNT; ++bit) {
+                gpio_set_level(s_matrix_outputs[bit], (output >> bit) & 1U);
+            }
+
+            uint8_t row = output > 3 ? output - 4 : output;
+            row = 3 - row;
+            for (size_t input = 0; input < KBD_MATRIX_INPUT_COUNT; ++input) {
+                if (gpio_get_level(s_matrix_inputs[input]) == 0) {
+                    uint8_t col = s_matrix_columns[input][output > 3 ? 0 : 1];
+                    scanned_state[row][col] = true;
+                }
+            }
+        }
+
+        for (uint8_t row = 0; row < 4; ++row) {
+            for (uint8_t col = 0; col < 14; ++col) {
+                if (scanned_state[row][col] == s_key_state[row][col]) {
+                    continue;
+                }
+                s_key_state[row][col] = scanned_state[row][col];
+                if (scanned_state[row][col]) {
+                    handle_press(row, col);
+                } else {
+                    cardputer_keyboard_key_event_t key_event = {
+                        .base = s_key_value_map[row][col].value_first,
+                        .shifted = s_key_value_map[row][col].value_second,
+                        .fn = any_pressed(CARDPUTER_KEY_FN),
+                        .shift = any_pressed(CARDPUTER_KEY_LEFT_SHIFT),
+                        .ctrl = any_pressed(CARDPUTER_KEY_LEFT_CTRL),
+                        .alt = any_pressed(CARDPUTER_KEY_LEFT_ALT),
+                        .opt = any_pressed(CARDPUTER_KEY_OPT),
+                        .enter = ((uint8_t)s_key_value_map[row][col].value_first == CARDPUTER_KEY_ENTER),
+                        .tab = ((uint8_t)s_key_value_map[row][col].value_first == CARDPUTER_KEY_TAB),
+                        .backspace = ((uint8_t)s_key_value_map[row][col].value_first == CARDPUTER_KEY_BACKSPACE),
+                        .pressed = false,
+                        .row = row,
+                        .col = col,
+                    };
+                    queue_key_event(&key_event);
+                }
+            }
+        }
+        return;
+    }
+
+    if (s_controller != KEYBOARD_CONTROLLER_TCA8418 ||
+        read_reg(TCA8418_REG_KEY_LCK_EC, &pending) != ESP_OK) {
         return;
     }
 
     pending &= 0x0F;
-    if (pending == 0) {
-        return;
-    }
-
     while (pending-- > 0) {
         if (read_reg(TCA8418_REG_KEY_EVENT_A, &raw) != ESP_OK || raw == 0) {
             break;

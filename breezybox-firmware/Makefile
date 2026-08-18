@@ -7,7 +7,7 @@ help:
 	@echo "Targets:"
 	@echo "  make build           Reconfigure and build firmware plus LittleFS image"
 	@echo "  make final-package    Build the full flash image (.bin)"
-	@echo "  make launcher-package Build the app-only Launcher-compatible image"
+	@echo "  make launcher-package Build the full Launcher-compatible install image"
 	@echo "  make flash           Flash firmware to $(PORT)"
 	@echo "  make app-flash       Flash only the app partition and preserve /root"
 	@echo "  make fs-flash        Flash only the /root LittleFS partition"

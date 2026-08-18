@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 set(BREEZY_BOARD "cardputer" CACHE STRING "Target BreezyBox board")
-set_property(CACHE BREEZY_BOARD PROPERTY STRINGS cardputer sticks3)
+set_property(CACHE BREEZY_BOARD PROPERTY STRINGS cardputer cardputer-adv sticks3)
 
 if(BREEZY_BOARD STREQUAL "sticks3")
     add_compile_definitions(
@@ -13,9 +13,21 @@ if(BREEZY_BOARD STREQUAL "sticks3")
         BREEZY_VTERM_COUNT=1
         BREEZY_VTERM_SCROLLBACK_LINES=64
     )
-else()
+elseif(BREEZY_BOARD STREQUAL "cardputer-adv")
     add_compile_definitions(
         BREEZY_BOARD_CARDPUTER=1
+        BREEZY_BOARD_CARDPUTER_ADV=1
+        BREEZY_DISPLAY_COLS=40
+        BREEZY_DISPLAY_ROWS=16
+        BREEZY_VTERM_COLS=40
+        BREEZY_VTERM_ROWS=16
+        BREEZY_VTERM_COUNT=2
+        BREEZY_VTERM_SCROLLBACK_LINES=96
+    )
+elseif(BREEZY_BOARD STREQUAL "cardputer")
+    add_compile_definitions(
+        BREEZY_BOARD_CARDPUTER=1
+        BREEZY_BOARD_CARDPUTER_UNIVERSAL=1
         BREEZY_DISPLAY_COLS=40
         BREEZY_DISPLAY_ROWS=16
         BREEZY_VTERM_COLS=40
