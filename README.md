@@ -1,6 +1,6 @@
 # BreezyBox for Cardputer
 
-> Cardputer ADV and StickS3 port of BreezyBox, a BusyBox-inspired shell and virtual terminal system for ESP32 with added features like Wi-Fi, Bluetooth keyboard support, bundled built-in apps, and an embedded Lua runtime.
+> Cardputer, Cardputer ADV and StickS3 port of BreezyBox, a BusyBox-inspired shell and virtual terminal system for ESP32 with added features like Wi-Fi, Bluetooth keyboard support, bundled built-in apps, and an embedded Lua runtime.
 
 <img src="docs/screenshot.png" alt="Screenshot of Breezybox on Cardputer" width="300" />
 <img src="docs/screenshot2.png" alt="Screenshot of Breezybox on Cardputer" width="300" />
@@ -45,7 +45,11 @@ Activate ESP-IDF first:
 source ~/esp/esp-idf/export.sh
 ```
 
-Cardputer ADV:
+### Cardputer and Cardputer ADV
+
+The default `cardputer` build is a single auto-detecting firmware image for
+both Cardputer models. It detects the keyboard controller at startup, so do
+not build a separate `cardputer-adv` image.
 
 ```sh
 make build
@@ -53,7 +57,18 @@ make flash PORT=/dev/cu.usbmodem1101
 make monitor PORT=/dev/cu.usbmodem1101
 ```
 
-StickS3:
+To create the final install image, use:
+
+```sh
+make final-package
+```
+
+The resulting `breezybox-firmware/build-cardputer/breezybox-cardputer.bin`
+contains the bootloader, partition table, firmware, and LittleFS image. It is
+the same universal image for both Cardputer and Cardputer ADV, is compatible
+with Launcher, and may also be flashed directly at offset `0x0`.
+
+### StickS3
 
 ```sh
 make build BOARD=sticks3

@@ -27,20 +27,19 @@ CARDPUTER_BIN := $(CARDPUTER_DIR)/.pio/build/cardputer/cardputer_breezy.bin
 FIRMWARE_BUILD_DIR := $(BUILD_DIR)
 IDF_ARGS := -B $(BUILD_DIR) -DIDF_TARGET=$(IDF_TARGET) -DBREEZY_BOARD=$(BOARD) -DSDKCONFIG=$(SDKCONFIG_FILE) -DSDKCONFIG_DEFAULTS=$(SDKCONFIG_DEFAULTS_FILE)
 
-.PHONY: help check-cardputer check-firmware build cardputer-build firmware-build final-package launcher-package app-flash fs-flash breezydemo-build cardputer-shell-build rebuild flash monitor erase clean cardputer-shell-flash cardputer-shell-monitor cardputer-shell-erase
+.PHONY: help check-cardputer check-firmware build cardputer-build firmware-build final-package app-flash fs-flash breezydemo-build cardputer-shell-build rebuild flash monitor erase clean cardputer-shell-flash cardputer-shell-monitor cardputer-shell-erase
 
 help:
 	@echo "Targets:"
-	@echo "  make build              Build the BreezyBox Cardputer port"
+	@echo "  make build              Build the universal Cardputer / Cardputer ADV firmware"
 	@echo "  make flash              Reconfigure, build, and flash breezybox-firmware to $(PORT)"
 	@echo "  make app-flash          Flash only the app partition and preserve /root"
 	@echo "  make fs-flash           Flash only the /root LittleFS partition"
 	@echo "  make monitor            Open the breezybox-firmware serial monitor on $(PORT)"
-	@echo "  make final-package      Build the full flash image (.bin)"
-	@echo "  make launcher-package   Build the full Launcher-compatible install image"
+	@echo "  make final-package      Build the universal Cardputer / ADV install image (.bin; Launcher-compatible)"
 	@echo "  make erase              Erase flash on $(PORT)"
 	@echo "  make cardputer-build    Alias for firmware-build"
-	@echo "  make firmware-build     Build the BreezyBox Cardputer port only"
+	@echo "  make firmware-build     Build the universal Cardputer / Cardputer ADV firmware"
 	@echo "  make breezydemo-build   Backward-compatible alias for firmware-build"
 	@echo "  make rebuild            Fullclean and rebuild the BreezyBox Cardputer port"
 	@echo "  make cardputer-shell-build   Build the legacy Arduino shell image"
@@ -51,8 +50,7 @@ help:
 	@echo "Overrides:"
 	@echo "  make flash PORT=/dev/cu.usbmodemXXXX"
 	@echo "  make flash BAUD=115200"
-	@echo "  make build BOARD=cardputer      Build one auto-detecting Cardputer image (default)"
-	@echo "  make build BOARD=cardputer-adv  Build for Cardputer ADV"
+	@echo "  make build BOARD=cardputer      Build one auto-detecting Cardputer / ADV image (default)"
 	@echo "  make build BOARD=sticks3"
 
 check-cardputer:
@@ -79,9 +77,6 @@ firmware-build: check-firmware
 	cd $(FIRMWARE_DIR) && $(IDF_PY) $(IDF_ARGS) reconfigure build
 
 final-package: firmware-build
-	python3 tools/build_launcher_bin.py --build-dir $(BUILD_DIR) --firmware-dir $(FIRMWARE_DIR) --out $(BUILD_DIR)/breezybox-$(BOARD).bin
-
-launcher-package: firmware-build
 	python3 tools/build_launcher_bin.py --build-dir $(BUILD_DIR) --firmware-dir $(FIRMWARE_DIR) --out $(BUILD_DIR)/breezybox-$(BOARD).bin
 
 breezydemo-build: firmware-build

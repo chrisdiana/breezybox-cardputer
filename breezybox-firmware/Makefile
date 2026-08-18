@@ -1,13 +1,12 @@
 PORT ?= /dev/cu.usbmodem1101
 IDF_PY ?= idf.py
 
-.PHONY: help check-idf build final-package launcher-package flash app-flash fs-flash monitor flash-monitor clean fullclean erase
+.PHONY: help check-idf build final-package flash app-flash fs-flash monitor flash-monitor clean fullclean erase
 
 help:
 	@echo "Targets:"
 	@echo "  make build           Reconfigure and build firmware plus LittleFS image"
-	@echo "  make final-package    Build the full flash image (.bin)"
-	@echo "  make launcher-package Build the full Launcher-compatible install image"
+	@echo "  make final-package    Build the full Launcher-compatible install image (.bin)"
 	@echo "  make flash           Flash firmware to $(PORT)"
 	@echo "  make app-flash       Flash only the app partition and preserve /root"
 	@echo "  make fs-flash        Flash only the /root LittleFS partition"
@@ -31,9 +30,6 @@ build: check-idf
 	$(IDF_PY) reconfigure build
 
 final-package: build
-	python3 ../tools/build_launcher_bin.py --build-dir build --firmware-dir . --out build/breezybox-cardputer.bin
-
-launcher-package: build
 	python3 ../tools/build_launcher_bin.py --build-dir build --firmware-dir . --out build/breezybox-cardputer.bin
 
 flash: check-idf
