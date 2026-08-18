@@ -9,7 +9,11 @@ ESPTOOL := python3 /Users/chris/.platformio/packages/tool-esptoolpy/esptool.py
 FIRMWARE_DIR := $(CURDIR)/breezybox-firmware
 IDF_PY ?= idf.py
 BUILD_DIR := $(FIRMWARE_DIR)/build-$(BOARD)
+ifeq ($(BOARD),cardputer-adv)
+SDKCONFIG_DEFAULTS_FILE := $(FIRMWARE_DIR)/sdkconfig.defaults.cardputer
+else
 SDKCONFIG_DEFAULTS_FILE := $(FIRMWARE_DIR)/sdkconfig.defaults.$(BOARD)
+endif
 SDKCONFIG_FILE := $(BUILD_DIR)/sdkconfig
 
 ifeq ($(BOARD),sticks3)
@@ -33,7 +37,7 @@ help:
 	@echo "  make fs-flash           Flash only the /root LittleFS partition"
 	@echo "  make monitor            Open the breezybox-firmware serial monitor on $(PORT)"
 	@echo "  make final-package      Build the full flash image (.bin)"
-	@echo "  make launcher-package   Build the app-only Launcher-compatible image"
+	@echo "  make launcher-package   Build the full Launcher-compatible install image"
 	@echo "  make erase              Erase flash on $(PORT)"
 	@echo "  make cardputer-build    Alias for firmware-build"
 	@echo "  make firmware-build     Build the BreezyBox Cardputer port only"
@@ -47,6 +51,8 @@ help:
 	@echo "Overrides:"
 	@echo "  make flash PORT=/dev/cu.usbmodemXXXX"
 	@echo "  make flash BAUD=115200"
+	@echo "  make build BOARD=cardputer      Build one auto-detecting Cardputer image (default)"
+	@echo "  make build BOARD=cardputer-adv  Build for Cardputer ADV"
 	@echo "  make build BOARD=sticks3"
 
 check-cardputer:
