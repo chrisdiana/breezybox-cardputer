@@ -4,6 +4,9 @@
 #include "sdkconfig.h"
 #include "esp_console.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -370,6 +373,27 @@ static void print_command_help(const esp_console_cmd_t *cmd)
     }
 }
 
+// Run built-in commands in a dedicated task with a larger stack.
+// Commands such as blescan start the Bluetooth stack, which needs
+// considerably more stack than the console REPL task provides;
+// running inline can overflow the stack and reboot the device.
+#define BUILTIN_TASK_STACK 8192
+
+typedef struct {
+    const char *cmdline;
+    int ret;
+    esp_err_t err;
+    SemaphoreHandle_t done;
+} builtin_task_ctx_t;
+
+static void builtin_task_fn(void *pv)
+{
+    builtin_task_ctx_t *ctx = (builtin_task_ctx_t *)pv;
+    ctx->err = esp_console_run(ctx->cmdline, &ctx->ret);
+    xSemaphoreGive(ctx->done);
+    vTaskDelete(NULL);
+}
+
 static int run_builtin_command(const char *cmdline)
 {
     parsed_args_t args;
@@ -389,7 +413,29 @@ static int run_builtin_command(const char *cmdline)
     free_args(&args);
 
     int ret = 0;
-    esp_err_t err = esp_console_run(cmdline, &ret);
+    esp_err_t err = ESP_OK;
+
+    {
+        StaticSemaphore_t done_buf;
+        SemaphoreHandle_t done = xSemaphoreCreateBinaryStatic(&done_buf);
+        builtin_task_ctx_t tctx = {
+            .cmdline = cmdline,
+            .ret     = 0,
+            .err     = ESP_OK,
+            .done    = done,
+        };
+        if (done &&
+            xTaskCreate(builtin_task_fn, "brcmd", BUILTIN_TASK_STACK,
+                        &tctx, tskIDLE_PRIORITY + 1, NULL) == pdPASS) {
+            xSemaphoreTake(done, portMAX_DELAY);
+            ret = tctx.ret;
+            err = tctx.err;
+            vSemaphoreDelete(done);
+        } else {
+            if (done) vSemaphoreDelete(done);
+            err = esp_console_run(cmdline, &ret);
+        }
+    }
 
     if (err == ESP_ERR_NOT_FOUND) {
         if (parse_args(cmdline, &args) == 0 && args.argc > 0) {
